@@ -1,21 +1,28 @@
 'use client'
 
-import { useState } from 'react'
-import { signIn } from 'next-auth/react'
+import { useState, useEffect } from 'react'
+import { signIn, useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Building2, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Building2, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
+  const { data: session, status } = useSession()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.push('/dashboard')
+    }
+  }, [status, router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -30,7 +37,11 @@ export default function LoginPage() {
       })
 
       if (result?.error) {
-        setError(result.error)
+        if (result.error.includes('Database') || result.error.includes('MONGODB')) {
+          setError('Database not configured. Please set MONGODB_URI in Vercel environment variables.')
+        } else {
+          setError(result.error)
+        }
       } else {
         router.push('/dashboard')
         router.refresh()

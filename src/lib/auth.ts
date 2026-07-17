@@ -35,8 +35,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!credentials?.email || !credentials?.password) {
           throw new Error('Email and password are required')
         }
-
-        await connectDB()
+        try {
+          await connectDB()
+        } catch {
+          throw new Error('Database connection failed. Please check MONGODB_URI.')
+        }
 
         const user = await User.findOne({ email: credentials.email as string }).select('+password').populate('brandAccess')
         if (!user) {
@@ -94,7 +97,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   pages: {
     signIn: '/login',
+    error: '/login',
   },
+  trustHost: true,
 })
 
 export const { GET, POST } = handlers
