@@ -1,3 +1,5 @@
+export const runtime = 'nodejs'
+
 import { NextResponse } from 'next/server'
 import { connectDB } from '@/config/db'
 import Brand from '@/models/Brand'
@@ -388,3 +390,4 @@ export async function POST() {
     return NextResponse.json({ error: 'Seed failed' }, { status: 500 })
   }
 }
+

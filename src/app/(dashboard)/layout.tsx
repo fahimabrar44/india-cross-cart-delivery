@@ -1,3 +1,5 @@
+export const runtime = 'nodejs'
+
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'

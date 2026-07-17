@@ -1,3 +1,5 @@
+export const runtime = 'nodejs'
+
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { v2 as cloudinary } from 'cloudinary'
@@ -42,3 +44,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
   }
 }
+
