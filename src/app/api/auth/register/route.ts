@@ -18,7 +18,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
     }
 
-    await connectDB()
+    try {
+      await connectDB()
+    } catch {
+      return NextResponse.json({
+        error: 'Database not configured. Ask the admin to set MONGODB_URI in Vercel environment variables.'
+      }, { status: 503 })
+    }
 
     const existing = await User.findOne({ email: email.toLowerCase() })
     if (existing) {
