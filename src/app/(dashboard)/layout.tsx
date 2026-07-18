@@ -3,6 +3,7 @@ export const runtime = 'nodejs'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import { ClientOnlyWrapper } from '@/components/ClientOnlyWrapper'
 
 export default async function AuthenticatedLayout({
   children,
@@ -11,5 +12,9 @@ export default async function AuthenticatedLayout({
 }) {
   const session = await auth()
   if (!session) redirect('/login')
-  return <DashboardLayout>{children}</DashboardLayout>
+  return (
+    <ClientOnlyWrapper>
+      <DashboardLayout>{children}</DashboardLayout>
+    </ClientOnlyWrapper>
+  )
 }
