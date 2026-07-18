@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth'
 import { connectDB } from '@/config/db'
 import Order from '@/models/Order'
 import Brand from '@/models/Brand'
+import Customer from '@/models/Customer'
 import Inventory from '@/models/Inventory'
 import StockTransaction from '@/models/StockTransaction'
 import '@/models/Product'
@@ -76,8 +77,39 @@ export async function POST(request: Request) {
       'invoiceSettings.nextNumber': brand.invoiceSettings.nextNumber + 1,
     })
 
+    let customerId = body.customer
+    const shippingPhone = body.shippingAddress?.phone
+    if (!customerId && shippingPhone) {
+      const existing = await Customer.findOne({ phone: shippingPhone, brand: body.brand })
+      if (existing) {
+        customerId = existing._id
+        if (body.shippingAddress?.name) existing.name = body.shippingAddress.name
+        if (body.shippingAddress?.address) existing.address = body.shippingAddress.address
+        if (body.shippingAddress?.district) existing.district = body.shippingAddress.district
+        existing.totalOrders += 1
+        existing.totalPurchases += body.total || 0
+        await existing.save()
+      } else {
+        const newCustomer = await Customer.create({
+          name: body.shippingAddress.name || 'Unknown',
+          phone: shippingPhone,
+          address: body.shippingAddress.address || '',
+          district: body.shippingAddress.district || '',
+          brand: body.brand,
+          totalOrders: 1,
+          totalPurchases: body.total || 0,
+        })
+        customerId = newCustomer._id
+      }
+    } else if (customerId) {
+      await Customer.findByIdAndUpdate(customerId, {
+        $inc: { totalOrders: 1, totalPurchases: body.total || 0 },
+      })
+    }
+
     const order = await Order.create({
       ...body,
+      customer: customerId,
       orderNumber,
       status: 'new',
       paymentStatus: body.paymentStatus || 'pending',
