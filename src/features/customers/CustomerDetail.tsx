@@ -71,12 +71,15 @@ interface Order {
 
 export function CustomerDetail({ customerId }: { customerId: string }) {
   const router = useRouter()
+  const [mounted, setMounted] = useState(false)
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [callDialogOpen, setCallDialogOpen] = useState(false)
   const [callResponse, setCallResponse] = useState('')
   const [calling, setCalling] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
 
   const fetchData = useCallback(async () => {
     try {
@@ -283,7 +286,11 @@ export function CustomerDetail({ customerId }: { customerId: string }) {
                     <TableCell>{log.phone}</TableCell>
                     <TableCell>{log.response}</TableCell>
                     <TableCell>
-                      {log.orderId ? (log.orderId as { orderNumber: string }).orderNumber : '-'}
+                      {log.orderId
+                        ? typeof log.orderId === 'object'
+                          ? (log.orderId as { orderNumber: string }).orderNumber
+                          : 'Yes'
+                        : '-'}
                     </TableCell>
                   </TableRow>
                 ))
@@ -347,7 +354,7 @@ export function CustomerDetail({ customerId }: { customerId: string }) {
         Total purchase amount across all orders: <span className="font-bold text-foreground">{formatCurrency(totalPurchaseAmount)}</span>
       </div>
 
-      <Dialog open={callDialogOpen} onOpenChange={setCallDialogOpen}>
+      {mounted && <Dialog open={callDialogOpen} onOpenChange={setCallDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Call {customer.name}</DialogTitle>
@@ -373,7 +380,7 @@ export function CustomerDetail({ customerId }: { customerId: string }) {
             </Button>
           </DialogFooter>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
     </div>
   )
 }
