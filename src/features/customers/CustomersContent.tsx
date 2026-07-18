@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,10 +14,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, formatDate } from '@/lib/utils'
 import { BrandSwitcher } from '@/components/layout/BrandSwitcher'
 import { useBrandStore } from '@/store/useBrandStore'
-import { Search, Users, RefreshCw, Plus } from 'lucide-react'
+import { ChevronDown, ChevronRight, Search, Users, RefreshCw, Plus } from 'lucide-react'
 
 interface Customer {
   _id: string
@@ -37,6 +37,7 @@ interface Customer {
 
 export function CustomersContent() {
   const { selectedBrand } = useBrandStore()
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -127,25 +128,60 @@ export function CustomersContent() {
                   </TableRow>
                 ) : (
                   customers.map((customer) => (
-                    <TableRow
-                      key={customer._id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => window.location.href = `/customers/${customer._id}`}
-                    >
-                      <TableCell className="font-medium">{customer.name}</TableCell>
-                      <TableCell>{customer.phone}</TableCell>
-                      <TableCell className="text-muted-foreground">{customer.email || '-'}</TableCell>
-                      <TableCell className="text-muted-foreground">{customer.district || '-'}</TableCell>
-                      <TableCell className="text-center">{customer.totalOrders}</TableCell>
-                      <TableCell className="text-right font-medium">{formatCurrency(customer.totalPurchases)}</TableCell>
-                      <TableCell>
-                        {customer.isBlacklisted ? (
-                          <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">Blacklisted</Badge>
-                        ) : (
-                          <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Active</Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
+                    <React.Fragment key={customer._id}>
+                      <TableRow className="cursor-pointer" onClick={() => setExpandedId(expandedId === customer._id ? null : customer._id)}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {expandedId === customer._id ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                            {customer.name}
+                          </div>
+                        </TableCell>
+                        <TableCell>{customer.phone}</TableCell>
+                        <TableCell className="text-muted-foreground">{customer.email || '-'}</TableCell>
+                        <TableCell className="text-muted-foreground">{customer.district || '-'}</TableCell>
+                        <TableCell className="text-center">{customer.totalOrders}</TableCell>
+                        <TableCell className="text-right font-medium">{formatCurrency(customer.totalPurchases)}</TableCell>
+                        <TableCell>
+                          {customer.isBlacklisted ? (
+                            <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">Blacklisted</Badge>
+                          ) : (
+                            <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">Active</Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                      {expandedId === customer._id && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="bg-muted/30 p-4">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                              <div>
+                                <p className="text-muted-foreground mb-1">Full Address</p>
+                                <p>{customer.address || '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">District</p>
+                                <p>{customer.district || '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Total Orders</p>
+                                <p className="font-medium">{customer.totalOrders}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Created</p>
+                                <p>{formatDate(customer.createdAt)}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">WhatsApp</p>
+                                <p>{customer.whatsapp || '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Country</p>
+                                <p>{customer.country || '-'}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
                   ))
                 )}
               </TableBody>

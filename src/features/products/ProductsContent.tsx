@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,11 +21,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { formatCurrency, getStatusColor } from '@/lib/utils'
+import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils'
 import { BrandSwitcher } from '@/components/layout/BrandSwitcher'
 import { useBrandStore } from '@/store/useBrandStore'
 import { useRouter } from 'next/navigation'
-import { Search, Package, RefreshCw } from 'lucide-react'
+import { ChevronDown, ChevronRight, Search, Package, RefreshCw } from 'lucide-react'
 
 interface Product {
   _id: string
@@ -36,11 +36,16 @@ interface Product {
   isActive: boolean
   stockAlertLimit: number
   category?: { _id: string; name: string }
+  description?: string
+  barcode?: string
+  brand?: { _id: string; name: string }
+  createdAt?: string
 }
 
 export function ProductsContent() {
   const router = useRouter()
   const { selectedBrand } = useBrandStore()
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -127,19 +132,66 @@ export function ProductsContent() {
                   </TableRow>
                 ) : (
                   products.map((product) => (
-                    <TableRow key={product._id}>
-                      <TableCell className="font-medium">{product.name}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{product.sku}</TableCell>
-                      <TableCell>{product.category?.name || '-'}</TableCell>
-                      <TableCell>{formatCurrency(product.purchasePrice)}</TableCell>
-                      <TableCell className="font-medium">{formatCurrency(product.sellingPrice)}</TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(product.isActive ? 'active' : 'inactive')}>
-                          {product.isActive ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm">{product.stockAlertLimit}</TableCell>
-                    </TableRow>
+                    <React.Fragment key={product._id}>
+                      <TableRow className="cursor-pointer" onClick={() => setExpandedId(expandedId === product._id ? null : product._id)}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {expandedId === product._id ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                            {product.name}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{product.sku}</TableCell>
+                        <TableCell>{product.category?.name || '-'}</TableCell>
+                        <TableCell>{formatCurrency(product.purchasePrice)}</TableCell>
+                        <TableCell className="font-medium">{formatCurrency(product.sellingPrice)}</TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(product.isActive ? 'active' : 'inactive')}>
+                            {product.isActive ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm">{product.stockAlertLimit}</TableCell>
+                      </TableRow>
+                      {expandedId === product._id && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="bg-muted/30 p-4">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                              <div>
+                                <p className="text-muted-foreground mb-1">Description</p>
+                                <p>{product.description || '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Barcode</p>
+                                <p>{product.barcode || '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Category</p>
+                                <p>{product.category?.name || '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Brand</p>
+                                <p>{product.brand?.name || '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Created</p>
+                                <p>{product.createdAt ? formatDate(product.createdAt) : '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Stock Alert Limit</p>
+                                <p>{product.stockAlertLimit}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Purchase Price</p>
+                                <p>{formatCurrency(product.purchasePrice)}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Selling Price</p>
+                                <p className="font-medium">{formatCurrency(product.sellingPrice)}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
                   ))
                 )}
               </TableBody>

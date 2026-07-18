@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,9 +14,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { formatDate } from '@/lib/utils'
 import { BrandSwitcher } from '@/components/layout/BrandSwitcher'
 import { useBrandStore } from '@/store/useBrandStore'
-import { Search, Truck, RefreshCw, Plus } from 'lucide-react'
+import { ChevronDown, ChevronRight, Search, Truck, RefreshCw, Plus } from 'lucide-react'
 
 interface Supplier {
   _id: string
@@ -32,6 +33,7 @@ interface Supplier {
 
 export function SuppliersContent() {
   const { selectedBrand } = useBrandStore()
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -121,18 +123,57 @@ export function SuppliersContent() {
                   </TableRow>
                 ) : (
                   suppliers.map((supplier) => (
-                    <TableRow key={supplier._id}>
-                      <TableCell className="font-medium">{supplier.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{supplier.company || '-'}</TableCell>
-                      <TableCell>{supplier.phone}</TableCell>
-                      <TableCell className="text-muted-foreground">{supplier.email || '-'}</TableCell>
-                      <TableCell className="text-center">{supplier.products?.length || 0}</TableCell>
-                      <TableCell>
-                        <Badge className={supplier.isActive ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'}>
-                          {supplier.isActive ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
+                    <React.Fragment key={supplier._id}>
+                      <TableRow className="cursor-pointer" onClick={() => setExpandedId(expandedId === supplier._id ? null : supplier._id)}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {expandedId === supplier._id ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                            {supplier.name}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{supplier.company || '-'}</TableCell>
+                        <TableCell>{supplier.phone}</TableCell>
+                        <TableCell className="text-muted-foreground">{supplier.email || '-'}</TableCell>
+                        <TableCell className="text-center">{supplier.products?.length || 0}</TableCell>
+                        <TableCell>
+                          <Badge className={supplier.isActive ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'}>
+                            {supplier.isActive ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                      {expandedId === supplier._id && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="bg-muted/30 p-4">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                              <div>
+                                <p className="text-muted-foreground mb-1">Email</p>
+                                <p>{supplier.email || '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Address</p>
+                                <p>-</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Supplied Products</p>
+                                <p className="font-medium">{supplier.products?.length || 0}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Company</p>
+                                <p>{supplier.company || '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Created</p>
+                                <p>{formatDate(supplier.createdAt)}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Phone</p>
+                                <p>{supplier.phone}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
                   ))
                 )}
               </TableBody>

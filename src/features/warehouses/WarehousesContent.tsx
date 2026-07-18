@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/table'
 import { BrandSwitcher } from '@/components/layout/BrandSwitcher'
 import { useBrandStore } from '@/store/useBrandStore'
-import { Warehouse, Plus, RefreshCw, Building2, Phone, User } from 'lucide-react'
+import { ChevronDown, ChevronRight, Warehouse, Plus, RefreshCw, Building2, Phone, User } from 'lucide-react'
 
 interface WarehouseItem {
   _id: string
@@ -32,6 +32,7 @@ interface WarehouseItem {
 export function WarehousesContent() {
   const router = useRouter()
   const { selectedBrand } = useBrandStore()
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [warehouses, setWarehouses] = useState<WarehouseItem[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -95,40 +96,75 @@ export function WarehousesContent() {
                   </TableRow>
                 ) : (
                   warehouses.map((w) => (
-                    <TableRow key={w._id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-4 w-4 text-muted-foreground" />
-                          {w.name}
-                        </div>
-                      </TableCell>
-                      <TableCell>{w.brand?.name || '-'}</TableCell>
-                      <TableCell>
-                        {w.manager ? (
+                    <React.Fragment key={w._id}>
+                      <TableRow className="cursor-pointer" onClick={() => setExpandedId(expandedId === w._id ? null : w._id)}>
+                        <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-muted-foreground" />
-                            {w.manager}
+                            {expandedId === w._id ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                            {w.name}
                           </div>
-                        ) : '-'}
-                      </TableCell>
-                      <TableCell>
-                        {w.phone ? (
-                          <div className="flex items-center gap-2">
-                            <Phone className="h-4 w-4 text-muted-foreground" />
-                            {w.phone}
-                          </div>
-                        ) : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          w.isActive
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                            : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                        }`}>
-                          {w.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </TableCell>
-                    </TableRow>
+                        </TableCell>
+                        <TableCell>{w.brand?.name || '-'}</TableCell>
+                        <TableCell>
+                          {w.manager ? (
+                            <div className="flex items-center gap-2">
+                              <User className="h-4 w-4 text-muted-foreground" />
+                              {w.manager}
+                            </div>
+                          ) : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {w.phone ? (
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-4 w-4 text-muted-foreground" />
+                              {w.phone}
+                            </div>
+                          ) : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            w.isActive
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                          }`}>
+                            {w.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                      {expandedId === w._id && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="bg-muted/30 p-4">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                              <div>
+                                <p className="text-muted-foreground mb-1">Address</p>
+                                <p>{w.address || '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Email</p>
+                                <p>{w.email || '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Location</p>
+                                <p>{w.location || '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Brand</p>
+                                <p>{w.brand?.name || '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Manager</p>
+                                <p>{w.manager || '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Contact</p>
+                                <p>{w.phone || '-'}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
                   ))
                 )}
               </TableBody>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,7 +24,7 @@ import {
 import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils'
 import { BrandSwitcher } from '@/components/layout/BrandSwitcher'
 import { useBrandStore } from '@/store/useBrandStore'
-import { Search, ShoppingBag, RefreshCw } from 'lucide-react'
+import { ChevronDown, ChevronRight, Search, ShoppingBag, RefreshCw } from 'lucide-react'
 
 interface Order {
   _id: string
@@ -42,6 +42,7 @@ interface Order {
 
 export function OrdersContent() {
   const { selectedBrand } = useBrandStore()
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -148,30 +149,72 @@ export function OrdersContent() {
                   </TableRow>
                 ) : (
                   orders.map((order) => (
-                    <TableRow key={order._id} className="cursor-pointer hover:bg-muted/50" onClick={() => window.location.href = `/orders/${order._id}`}>
-                      <TableCell className="font-medium">{order.orderNumber}</TableCell>
-                      <TableCell>
-                        <p className="text-sm font-medium">{order.customer?.name}</p>
-                        <p className="text-xs text-muted-foreground">{order.customer?.phone}</p>
-                      </TableCell>
-                      <TableCell className="font-medium">{formatCurrency(order.total)}</TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(order.paymentStatus)}>
-                          {order.paymentStatus}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(order.status)}>
-                          {order.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {order.courierName || '-'}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(order.createdAt)}
-                      </TableCell>
-                    </TableRow>
+                    <React.Fragment key={order._id}>
+                      <TableRow className="cursor-pointer" onClick={() => setExpandedId(expandedId === order._id ? null : order._id)}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {expandedId === order._id ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                            {order.orderNumber}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm font-medium">{order.customer?.name}</p>
+                          <p className="text-xs text-muted-foreground">{order.customer?.phone}</p>
+                        </TableCell>
+                        <TableCell className="font-medium">{formatCurrency(order.total)}</TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(order.paymentStatus)}>
+                            {order.paymentStatus}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(order.status)}>
+                            {order.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {order.courierName || '-'}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(order.createdAt)}
+                        </TableCell>
+                      </TableRow>
+                      {expandedId === order._id && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="bg-muted/30 p-4">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                              <div>
+                                <p className="text-muted-foreground mb-1">Customer</p>
+                                <p className="font-medium">{order.customer?.name}</p>
+                                <p className="text-muted-foreground">{order.customer?.phone}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Shipping</p>
+                                <p>{order.courierName || 'N/A'}</p>
+                                <p className="text-muted-foreground">{order.trackingNumber || '-'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Payment</p>
+                                <p className="font-medium">{formatCurrency(order.total)}</p>
+                                <p className="text-muted-foreground">COD: {formatCurrency(order.codAmount)}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Item Count</p>
+                                <p>-</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Agent</p>
+                                <p>{order.agent?.name || 'N/A'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-1">Date</p>
+                                <p>{formatDate(order.createdAt)}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
                   ))
                 )}
               </TableBody>

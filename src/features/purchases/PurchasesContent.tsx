@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -16,7 +16,7 @@ import {
 import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils'
 import { BrandSwitcher } from '@/components/layout/BrandSwitcher'
 import { useBrandStore } from '@/store/useBrandStore'
-import { ShoppingCart, RefreshCw, Plus } from 'lucide-react'
+import { ChevronDown, ChevronRight, ShoppingCart, RefreshCw, Plus } from 'lucide-react'
 
 interface Purchase {
   _id: string
@@ -34,6 +34,7 @@ interface Purchase {
 
 export function PurchasesContent() {
   const { selectedBrand } = useBrandStore()
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [purchases, setPurchases] = useState<Purchase[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
@@ -110,28 +111,84 @@ export function PurchasesContent() {
                   </TableRow>
                 ) : (
                   purchases.map((purchase) => (
-                    <TableRow key={purchase._id}>
-                      <TableCell className="font-medium font-mono text-sm">{purchase.invoiceNumber}</TableCell>
-                      <TableCell>
-                        <p className="font-medium">{purchase.supplier?.name || 'N/A'}</p>
-                        {purchase.supplier?.company && (
-                          <p className="text-xs text-muted-foreground">{purchase.supplier.company}</p>
-                        )}
-                      </TableCell>
-                      <TableCell>{purchase.brand?.name || '-'}</TableCell>
-                      <TableCell className="text-center">{purchase.items?.length || 0}</TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(purchase.total, purchase.brand?.currencySymbol)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(purchase.paymentStatus)}>
-                          {purchase.paymentStatus}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {formatDate(purchase.purchaseDate || purchase.createdAt)}
-                      </TableCell>
-                    </TableRow>
+                    <React.Fragment key={purchase._id}>
+                      <TableRow className="cursor-pointer" onClick={() => setExpandedId(expandedId === purchase._id ? null : purchase._id)}>
+                        <TableCell className="font-medium font-mono text-sm">
+                          <div className="flex items-center gap-2">
+                            {expandedId === purchase._id ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                            {purchase.invoiceNumber}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <p className="font-medium">{purchase.supplier?.name || 'N/A'}</p>
+                          {purchase.supplier?.company && (
+                            <p className="text-xs text-muted-foreground">{purchase.supplier.company}</p>
+                          )}
+                        </TableCell>
+                        <TableCell>{purchase.brand?.name || '-'}</TableCell>
+                        <TableCell className="text-center">{purchase.items?.length || 0}</TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(purchase.total, purchase.brand?.currencySymbol)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(purchase.paymentStatus)}>
+                            {purchase.paymentStatus}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {formatDate(purchase.purchaseDate || purchase.createdAt)}
+                        </TableCell>
+                      </TableRow>
+                      {expandedId === purchase._id && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="bg-muted/30 p-4">
+                            <div className="space-y-4 text-sm">
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                <div>
+                                  <p className="text-muted-foreground mb-1">Supplier</p>
+                                  <p className="font-medium">{purchase.supplier?.name || 'N/A'}</p>
+                                  {purchase.supplier?.company && <p className="text-muted-foreground">{purchase.supplier.company}</p>}
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground mb-1">Payment Status</p>
+                                  <Badge className={getStatusColor(purchase.paymentStatus)}>{purchase.paymentStatus}</Badge>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground mb-1">Subtotal</p>
+                                  <p>{formatCurrency(purchase.subtotal, purchase.brand?.currencySymbol)}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground mb-1">Discount</p>
+                                  <p>{formatCurrency(purchase.discount, purchase.brand?.currencySymbol)}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground mb-1">Total</p>
+                                  <p className="font-medium">{formatCurrency(purchase.total, purchase.brand?.currencySymbol)}</p>
+                                </div>
+                                <div>
+                                  <p className="text-muted-foreground mb-1">Date</p>
+                                  <p>{formatDate(purchase.purchaseDate || purchase.createdAt)}</p>
+                                </div>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground mb-2 font-medium">Items</p>
+                                <div className="space-y-1">
+                                  {purchase.items?.map((item, idx) => (
+                                    <div key={idx} className="flex items-center justify-between bg-background rounded px-3 py-1.5">
+                                      <span>{item.product?.name || 'Unknown'}</span>
+                                      <span className="text-muted-foreground">x{item.quantity} @ {formatCurrency(item.cost, purchase.brand?.currencySymbol)}</span>
+                                    </div>
+                                  ))}
+                                  {(!purchase.items || purchase.items.length === 0) && (
+                                    <p className="text-muted-foreground">No items</p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
                   ))
                 )}
               </TableBody>
