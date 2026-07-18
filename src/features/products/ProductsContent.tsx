@@ -24,6 +24,7 @@ import {
 import { formatCurrency, getStatusColor } from '@/lib/utils'
 import { BrandSwitcher } from '@/components/layout/BrandSwitcher'
 import { useBrandStore } from '@/store/useBrandStore'
+import { useRouter } from 'next/navigation'
 import { Search, Package, RefreshCw } from 'lucide-react'
 
 interface Product {
@@ -38,6 +39,7 @@ interface Product {
 }
 
 export function ProductsContent() {
+  const router = useRouter()
   const { selectedBrand } = useBrandStore()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -75,7 +77,7 @@ export function ProductsContent() {
         <h1 className="text-2xl font-bold tracking-tight">Products</h1>
         <div className="flex items-center gap-2">
           <BrandSwitcher />
-          <Button>Add Product</Button>
+          <Button onClick={() => router.push('/products/new')}>Add Product</Button>
         </div>
       </div>
 
