@@ -32,8 +32,9 @@ import {
 } from '@/components/ui/dialog'
 import { BrandSwitcher } from '@/components/layout/BrandSwitcher'
 import { useBrandStore } from '@/store/useBrandStore'
-import { Boxes, RefreshCw, PackagePlus, SlidersHorizontal } from 'lucide-react'
+import { Boxes, RefreshCw, PackagePlus, SlidersHorizontal, History, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { formatDateTime } from '@/lib/utils'
 
 interface InventoryItem {
   _id: string
@@ -53,6 +54,20 @@ interface ProductItem {
   _id: string
   name: string
   sku: string
+}
+
+interface Transaction {
+  _id: string
+  product: { _id: string; name: string; sku: string }
+  warehouse: { _id: string; name: string }
+  type: string
+  quantity: number
+  previousStock: number
+  newStock: number
+  reference?: string
+  note?: string
+  performedBy?: { _id: string; name: string }
+  createdAt: string
 }
 
 export function InventoryContent() {
@@ -82,6 +97,11 @@ export function InventoryContent() {
     quantity: '',
     note: '',
   })
+
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyItem, setHistoryItem] = useState<InventoryItem | null>(null)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -218,6 +238,25 @@ export function InventoryContent() {
     setSelectedItem(item)
     setAdjustForm({ quantity: '', note: '' })
     setAdjustOpen(true)
+  }
+
+  async function openHistory(item: InventoryItem) {
+    setHistoryItem(item)
+    setHistoryOpen(true)
+    setHistoryLoading(true)
+    try {
+      const params = new URLSearchParams()
+      params.set('product', item.product._id)
+      params.set('warehouse', item.warehouse._id)
+      if (item.brand?._id) params.set('brand', item.brand._id)
+      const res = await fetch(`/api/inventory/transactions?${params}`)
+      const json = await res.json()
+      setTransactions(json.data || [])
+    } catch {
+      setTransactions([])
+    } finally {
+      setHistoryLoading(false)
+    }
   }
 
   return (
@@ -361,12 +400,14 @@ export function InventoryContent() {
                       <TableCell className="text-right text-muted-foreground">{item.openingStock}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Dialog open={adjustOpen && selectedItem?._id === item._id && false} onOpenChange={(o) => { if (!o) { setAdjustOpen(false); setSelectedItem(null) } }}>
-                            <Button variant="ghost" size="sm" onClick={() => openAdjust(item)}>
-                              <SlidersHorizontal className="h-4 w-4 mr-1" />
-                              Adjust
-                            </Button>
-                          </Dialog>
+                          <Button variant="ghost" size="sm" onClick={() => openHistory(item)}>
+                            <History className="h-4 w-4 mr-1" />
+                            History
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => openAdjust(item)}>
+                            <SlidersHorizontal className="h-4 w-4 mr-1" />
+                            Adjust
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -412,6 +453,48 @@ export function InventoryContent() {
               <Button type="submit" disabled={saving}>{saving ? 'Adjusting...' : 'Adjust Stock'}</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={historyOpen} onOpenChange={(o) => { if (!o) { setHistoryOpen(false); setHistoryItem(null) } }}>
+        <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Stock History</DialogTitle>
+            <DialogDescription>
+              {historyItem ? `${historyItem.product?.name} — ${historyItem.warehouse?.name}` : ''}
+            </DialogDescription>
+          </DialogHeader>
+          {historyLoading ? (
+            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+          ) : transactions.length === 0 ? (
+            <p className="text-center py-8 text-muted-foreground text-sm">No transactions found</p>
+          ) : (
+            <div className="space-y-2">
+              {transactions.map((t) => (
+                <div key={t._id} className="flex items-center justify-between border rounded-lg p-3 text-sm">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                        t.type === 'stock_in' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
+                        t.type === 'stock_out' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      }`}>
+                        {t.type.replace(/_/g, ' ')}
+                      </span>
+                      <span className="text-muted-foreground">{formatDateTime(t.createdAt)}</span>
+                    </div>
+                    <p className="text-muted-foreground">
+                      Qty: <span className={t.quantity > 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>{t.quantity > 0 ? '+' : ''}{t.quantity}</span>
+                      {' | '}Before: {t.previousStock} → After: {t.newStock}
+                    </p>
+                    {t.reference && <p className="text-xs text-muted-foreground">Ref: {t.reference}</p>}
+                    {t.note && <p className="text-xs text-muted-foreground">Note: {t.note}</p>}
+                    {t.performedBy && <p className="text-xs text-muted-foreground">By: {t.performedBy.name}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

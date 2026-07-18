@@ -5,6 +5,10 @@ import { auth } from '@/lib/auth'
 import { connectDB } from '@/config/db'
 import Order from '@/models/Order'
 import Brand from '@/models/Brand'
+import Inventory from '@/models/Inventory'
+import StockTransaction from '@/models/StockTransaction'
+import '@/models/Product'
+import '@/models/Warehouse'
 import { createAuditLog } from '@/services/audit.service'
 import { createNotification } from '@/services/notification.service'
 
@@ -79,6 +83,27 @@ export async function POST(request: Request) {
       paymentStatus: body.paymentStatus || 'pending',
       codAmount: body.codAmount || body.total || 0,
     })
+
+    for (const item of body.items) {
+      const inv = await Inventory.findOne({ product: item.product, brand: body.brand }).sort({ currentStock: -1 })
+      if (inv && inv.currentStock >= item.quantity) {
+        const prev = inv.currentStock
+        inv.currentStock -= item.quantity
+        await inv.save()
+        await StockTransaction.create({
+          product: item.product,
+          warehouse: inv.warehouse,
+          brand: body.brand,
+          type: 'stock_out',
+          quantity: -item.quantity,
+          previousStock: prev,
+          newStock: inv.currentStock,
+          reference: orderNumber,
+          note: `Order ${orderNumber}`,
+          performedBy: session.user.id,
+        })
+      }
+    }
 
     await createNotification({
       brand: body.brand,
