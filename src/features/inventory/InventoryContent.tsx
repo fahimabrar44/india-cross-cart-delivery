@@ -212,7 +212,7 @@ export function InventoryContent() {
                 <div className="grid gap-4 py-4">
                   <div className="space-y-2">
                     <Label>Product *</Label>
-                    <Select value={stockInForm.product} onValueChange={(v) => setStockInForm({ ...stockInForm, product: v })}>
+                    <Select value={stockInForm.product} onValueChange={(v) => setStockInForm({ ...stockInForm, product: v || '' })}>
                       <SelectTrigger><SelectValue placeholder="Select product" /></SelectTrigger>
                       <SelectContent>
                         {products.map(p => (
@@ -223,7 +223,7 @@ export function InventoryContent() {
                   </div>
                   <div className="space-y-2">
                     <Label>Warehouse *</Label>
-                    <Select value={stockInForm.warehouse} onValueChange={(v) => setStockInForm({ ...stockInForm, warehouse: v })}>
+                    <Select value={stockInForm.warehouse} onValueChange={(v) => setStockInForm({ ...stockInForm, warehouse: v || '' })}>
                       <SelectTrigger><SelectValue placeholder="Select warehouse" /></SelectTrigger>
                       <SelectContent>
                         {warehouses.map(w => (
