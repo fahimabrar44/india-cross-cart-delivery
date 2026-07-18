@@ -19,13 +19,13 @@ if (!global.mongooseCache) {
 export async function connectDB(): Promise<typeof mongoose> {
   const MONGODB_URI = process.env.MONGODB_URI
 
-  if (!'') {
+  if (!MONGODB_URI) {
     throw new Error(
       'MONGODB_URI is not configured. Please add it to your Vercel environment variables:\n' +
       '1. Go to Vercel Dashboard → Your Project → Settings → Environment Variables\n' +
       '2. Add MONGODB_URI with your MongoDB Atlas connection string\n' +
       '3. Redeploy the project'
-    )  bbhn
+    )
   }
 
   if (cached.conn) return cached.conn
