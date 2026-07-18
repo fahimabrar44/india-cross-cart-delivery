@@ -5,6 +5,9 @@ import { auth } from '@/lib/auth'
 import { connectDB } from '@/config/db'
 import Inventory from '@/models/Inventory'
 import StockTransaction from '@/models/StockTransaction'
+import '@/models/Product'
+import '@/models/Warehouse'
+import '@/models/Brand'
 
 export async function GET(request: Request) {
   try {

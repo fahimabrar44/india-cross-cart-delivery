@@ -4,6 +4,9 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { connectDB } from '@/config/db'
 import Inventory from '@/models/Inventory'
+import '@/models/Product'
+import '@/models/Warehouse'
+import '@/models/Brand'
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
