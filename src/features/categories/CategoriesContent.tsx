@@ -31,17 +31,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
 import { BrandSwitcher } from '@/components/layout/BrandSwitcher'
 import { useBrandStore } from '@/store/useBrandStore'
 import { Plus, RefreshCw, Pencil, Trash2, FolderTree } from 'lucide-react'
@@ -307,27 +296,25 @@ export function CategoriesContent() {
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(cat)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <AlertDialog open={deleteOpen && deleteId === cat._id} onOpenChange={(o) => { if (!o) setDeleteOpen(false) }}>
-                            <AlertDialogTrigger>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { setDeleteId(cat._id); setDeleteOpen(true) }}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Category</AlertDialogTitle>
-                                <AlertDialogDescription>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { setDeleteId(cat._id); setDeleteOpen(true) }}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <Dialog open={deleteOpen && deleteId === cat._id} onOpenChange={(o) => { if (!o) { setDeleteOpen(false); setDeleteId(null) } }}>
+                            <DialogContent className="sm:max-w-[400px]">
+                              <DialogHeader>
+                                <DialogTitle>Delete Category</DialogTitle>
+                                <DialogDescription>
                                   Are you sure you want to delete "{cat.name}"? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel onClick={() => { setDeleteOpen(false); setDeleteId(null) }}>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                </DialogDescription>
+                              </DialogHeader>
+                              <DialogFooter>
+                                <Button type="button" variant="outline" onClick={() => { setDeleteOpen(false); setDeleteId(null) }}>Cancel</Button>
+                                <Button type="button" variant="destructive" onClick={handleDelete} disabled={saving}>
                                   {saving ? 'Deleting...' : 'Delete'}
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
                         </div>
                       </TableCell>
                     </TableRow>
