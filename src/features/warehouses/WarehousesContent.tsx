@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -29,6 +30,7 @@ interface WarehouseItem {
 }
 
 export function WarehousesContent() {
+  const router = useRouter()
   const { selectedBrand } = useBrandStore()
   const [warehouses, setWarehouses] = useState<WarehouseItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -54,7 +56,7 @@ export function WarehousesContent() {
         <h1 className="text-2xl font-bold tracking-tight">Warehouses</h1>
         <div className="flex items-center gap-2">
           <BrandSwitcher />
-          <Button>
+          <Button onClick={() => router.push('/warehouses/new')}>
             <Plus className="mr-2 h-4 w-4" />
             Add Warehouse
           </Button>
