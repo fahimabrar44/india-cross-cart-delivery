@@ -211,9 +211,15 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         <Card>
           <CardHeader><CardTitle>Customer</CardTitle></CardHeader>
           <CardContent className="space-y-1 text-sm">
-            <p className="font-medium">{order.customer.name}</p>
-            <p className="text-muted-foreground">{order.customer.phone}</p>
-            {order.customer.email && <p className="text-muted-foreground">{order.customer.email}</p>}
+            {order.customer ? (
+              <>
+                <p className="font-medium">{order.customer.name}</p>
+                <p className="text-muted-foreground">{order.customer.phone}</p>
+                {order.customer.email && <p className="text-muted-foreground">{order.customer.email}</p>}
+              </>
+            ) : (
+              <p className="text-muted-foreground italic">No customer selected</p>
+            )}
             <Separator className="my-2" />
             <p className="font-medium">Shipping Address</p>
             <p className="text-muted-foreground">{order.shippingAddress.name}</p>
