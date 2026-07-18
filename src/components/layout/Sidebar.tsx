@@ -23,6 +23,7 @@ import {
   Building2,
   Warehouse,
   UserCog,
+  FolderTree,
 } from 'lucide-react'
 
 const menuItems = [
@@ -30,6 +31,7 @@ const menuItems = [
   { label: 'Brands', href: '/brands', icon: Building2 },
   { label: 'Orders', href: '/orders', icon: ShoppingBag },
   { label: 'Products', href: '/products', icon: Package },
+  { label: 'Categories', href: '/categories', icon: FolderTree },
   { label: 'Inventory', href: '/inventory', icon: Boxes },
   { label: 'Warehouses', href: '/warehouses', icon: Warehouse },
   { label: 'Customers', href: '/customers', icon: Users },
