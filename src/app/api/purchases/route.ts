@@ -5,6 +5,8 @@ import { auth } from '@/lib/auth'
 import { connectDB } from '@/config/db'
 import Purchase from '@/models/Purchase'
 import Brand from '@/models/Brand'
+import '@/models/Supplier'
+import '@/models/Product'
 import { createAuditLog } from '@/services/audit.service'
 import mongoose from 'mongoose'
 
