@@ -64,6 +64,7 @@ export function InventoryContent() {
   const [selectedWarehouse, setSelectedWarehouse] = useState<string | null>('all')
   const [refreshKey, setRefreshKey] = useState(0)
 
+  const [brands, setBrands] = useState<{ _id: string; name: string }[]>([])
   const [stockInOpen, setStockInOpen] = useState(false)
   const [adjustOpen, setAdjustOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
@@ -72,6 +73,7 @@ export function InventoryContent() {
   const [stockInForm, setStockInForm] = useState({
     product: '',
     warehouse: '',
+    brand: selectedBrand || '',
     quantity: '',
     note: '',
   })
@@ -103,6 +105,30 @@ export function InventoryContent() {
     Promise.all([
       fetch(`/api/warehouses?${params}`).then(r => r.json()),
       fetch(`/api/products?${params}&limit=500`).then(r => r.json()),
+      fetch(`/api/brands`).then(r => r.json()),
+    ]).then(([wJson, pJson, bJson]) => {
+      if (mounted) {
+        setWarehouses(wJson.data || [])
+        setProducts(pJson.data || [])
+        setBrands(bJson.data || [])
+        if (!stockInForm.brand && bJson.data?.length) {
+          setStockInForm(f => ({ ...f, brand: bJson.data[0]._id }))
+        }
+      }
+    }).catch(() => {})
+
+    return () => { mounted = false }
+  }, [selectedBrand])
+
+  useEffect(() => {
+    if (!stockInForm.brand) return
+    let mounted = true
+    const params = new URLSearchParams()
+    params.set('brand', stockInForm.brand)
+
+    Promise.all([
+      fetch(`/api/warehouses?${params}`).then(r => r.json()),
+      fetch(`/api/products?${params}&limit=500`).then(r => r.json()),
     ]).then(([wJson, pJson]) => {
       if (mounted) {
         setWarehouses(wJson.data || [])
@@ -111,12 +137,16 @@ export function InventoryContent() {
     }).catch(() => {})
 
     return () => { mounted = false }
-  }, [selectedBrand])
+  }, [stockInForm.brand])
 
   async function handleStockIn(e: React.FormEvent) {
     e.preventDefault()
     if (!stockInForm.product || !stockInForm.warehouse || !stockInForm.quantity) {
       toast.error('Product, Warehouse and Quantity are required')
+      return
+    }
+    if (!stockInForm.brand) {
+      toast.error('Please select a brand')
       return
     }
 
@@ -129,7 +159,7 @@ export function InventoryContent() {
           type: 'stock_in',
           product: stockInForm.product,
           warehouse: stockInForm.warehouse,
-          brand: selectedBrand,
+          brand: stockInForm.brand,
           quantity: Number(stockInForm.quantity),
           note: stockInForm.note,
         }),
@@ -138,7 +168,7 @@ export function InventoryContent() {
       if (!res.ok) { const err = await res.json(); throw new Error(err.error) }
       toast.success('Stock added successfully')
       setStockInOpen(false)
-      setStockInForm({ product: '', warehouse: '', quantity: '', note: '' })
+      setStockInForm({ product: '', warehouse: '', brand: selectedBrand || '', quantity: '', note: '' })
       setRefreshKey(k => k + 1)
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to add stock')
@@ -210,6 +240,17 @@ export function InventoryContent() {
                   <DialogDescription>Add stock to inventory</DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
+                  <div className="space-y-2">
+                    <Label>Brand *</Label>
+                    <Select value={stockInForm.brand} onValueChange={(v) => setStockInForm({ ...stockInForm, brand: v || '' })}>
+                      <SelectTrigger><SelectValue placeholder="Select brand" /></SelectTrigger>
+                      <SelectContent>
+                        {brands.map(b => (
+                          <SelectItem key={b._id} value={b._id}>{b.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="space-y-2">
                     <Label>Product *</Label>
                     <Select value={stockInForm.product} onValueChange={(v) => setStockInForm({ ...stockInForm, product: v || '' })}>
