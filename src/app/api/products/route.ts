@@ -40,7 +40,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ data, total, page, limit, totalPages: Math.ceil(total / limit) })
   } catch (error) {
     console.error('Products fetch error:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 })
   }
 }
 
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ data: product }, { status: 201 })
   } catch (error) {
     console.error('Product create error:', error)
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 })
   }
 }
 
