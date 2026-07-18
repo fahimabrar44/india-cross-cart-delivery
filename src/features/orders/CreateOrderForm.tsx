@@ -123,9 +123,8 @@ export function CreateOrderForm() {
 
     setLoading(true)
     try {
-      const body = {
+      const body: Record<string, unknown> = {
         brand,
-        customer: selectedCustomer._id,
         items,
         subtotal,
         discount,
@@ -134,6 +133,7 @@ export function CreateOrderForm() {
         notes,
         shippingAddress,
       }
+      if (selectedCustomer) body.customer = selectedCustomer._id
 
       const res = await fetch('/api/orders', {
         method: 'POST',
