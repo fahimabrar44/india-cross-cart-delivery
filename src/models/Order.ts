@@ -12,7 +12,7 @@ export interface IOrderItem {
 export interface IOrderDocument extends Document {
   orderNumber: string
   brand: mongoose.Types.ObjectId
-  customer: mongoose.Types.ObjectId
+  customer?: mongoose.Types.ObjectId
   items: IOrderItem[]
   subtotal: number
   discount: number
@@ -55,7 +55,7 @@ const OrderSchema = new Schema<IOrderDocument>(
   {
     orderNumber: { type: String, required: true, unique: true },
     brand: { type: Schema.Types.ObjectId, ref: 'Brand', required: true },
-    customer: { type: Schema.Types.ObjectId, ref: 'Customer', required: true },
+    customer: { type: Schema.Types.ObjectId, ref: 'Customer' },
     items: [OrderItemSchema],
     subtotal: { type: Number, required: true, min: 0 },
     discount: { type: Number, default: 0, min: 0 },

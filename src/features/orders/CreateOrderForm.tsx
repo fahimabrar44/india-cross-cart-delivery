@@ -115,7 +115,7 @@ export function CreateOrderForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!brand) { toast.error('Please select a brand'); return }
-    if (!selectedCustomer) { toast.error('Please select a customer'); return }
+
     if (items.length === 0) { toast.error('Please add at least one item'); return }
     if (!shippingAddress.name || !shippingAddress.phone || !shippingAddress.address || !shippingAddress.district) {
       toast.error('Please fill in shipping address'); return
@@ -176,7 +176,7 @@ export function CreateOrderForm() {
             </div>
 
             <div className="space-y-2">
-              <Label>Customer *</Label>
+              <Label>Customer</Label>
               {selectedCustomer ? (
                 <div className="flex items-center justify-between border rounded-lg p-3">
                   <div>
