@@ -23,7 +23,10 @@ import {
 } from '@/components/ui/table'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
-import { ArrowLeft, Printer, Loader2 } from 'lucide-react'
+import { format } from 'date-fns'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { ArrowLeft, Printer, Loader2, Pencil, Check, X } from 'lucide-react'
 import { formatCurrency, formatDate, formatDateTime, getStatusColor } from '@/lib/utils'
 
 interface OrderItem {
@@ -75,6 +78,10 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   const [order, setOrder] = useState<Order | null>(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+  const [editShipping, setEditShipping] = useState(false)
+  const [shippingForm, setShippingForm] = useState({
+    courierName: '', trackingNumber: '', dispatchDate: '', deliveryDate: '', notes: '',
+  })
 
   const fetchOrder = useCallback(async () => {
     try {
@@ -104,6 +111,47 @@ export function OrderDetail({ orderId }: { orderId: string }) {
       toast.success(`Status updated to ${status}`)
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to update status')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  function startEditShipping() {
+    setShippingForm({
+      courierName: order?.courierName || '',
+      trackingNumber: order?.trackingNumber || '',
+      dispatchDate: order?.dispatchDate ? format(new Date(order.dispatchDate), 'yyyy-MM-dd') : '',
+      deliveryDate: order?.deliveryDate ? format(new Date(order.deliveryDate), 'yyyy-MM-dd') : '',
+      notes: order?.notes || '',
+    })
+    setEditShipping(true)
+  }
+
+  async function saveShippingInfo() {
+    if (!order) return
+    setUpdating(true)
+    try {
+      const body: Record<string, unknown> = {}
+      if (shippingForm.courierName !== (order.courierName || '')) body.courierName = shippingForm.courierName
+      if (shippingForm.trackingNumber !== (order.trackingNumber || '')) body.trackingNumber = shippingForm.trackingNumber
+      if (shippingForm.dispatchDate !== (order.dispatchDate ? format(new Date(order.dispatchDate), 'yyyy-MM-dd') : '')) body.dispatchDate = shippingForm.dispatchDate || null
+      if (shippingForm.deliveryDate !== (order.deliveryDate ? format(new Date(order.deliveryDate), 'yyyy-MM-dd') : '')) body.deliveryDate = shippingForm.deliveryDate || null
+      if (shippingForm.notes !== (order.notes || '')) body.notes = shippingForm.notes
+
+      if (Object.keys(body).length === 0) { setEditShipping(false); return }
+
+      const res = await fetch(`/api/orders/${order._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (!res.ok) { const err = await res.json(); throw new Error(err.error) }
+      const json = await res.json()
+      setOrder(json.data)
+      toast.success('Shipping info updated')
+      setEditShipping(false)
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update')
     } finally {
       setUpdating(false)
     }
@@ -230,38 +278,82 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Shipping Info</CardTitle></CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Courier</span>
-              <span>{order.courierName || '-'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Tracking</span>
-              <span>{order.trackingNumber || '-'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Dispatch Date</span>
-              <span>{order.dispatchDate ? formatDate(order.dispatchDate) : '-'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Delivery Date</span>
-              <span>{order.deliveryDate ? formatDate(order.deliveryDate) : '-'}</span>
-            </div>
-            {order.agent && (
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Shipping Info</CardTitle>
+            {!editShipping ? (
+              <Button type="button" variant="ghost" size="sm" onClick={startEditShipping}>
+                <Pencil className="h-4 w-4 mr-1" /> Edit
+              </Button>
+            ) : (
+              <div className="flex items-center gap-1">
+                <Button type="button" variant="ghost" size="sm" onClick={saveShippingInfo} disabled={updating}>
+                  {updating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  Save
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setEditShipping(false)}>
+                  <X className="h-4 w-4" /> Cancel
+                </Button>
+              </div>
+            )}
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {editShipping ? (
               <>
-                <Separator className="my-2" />
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Agent</span>
-                  <span>{order.agent.name}</span>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Courier</Label>
+                  <Input value={shippingForm.courierName} onChange={e => setShippingForm({ ...shippingForm, courierName: e.target.value })} placeholder="Courier name" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Tracking Number</Label>
+                  <Input value={shippingForm.trackingNumber} onChange={e => setShippingForm({ ...shippingForm, trackingNumber: e.target.value })} placeholder="Tracking number" />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Dispatch Date</Label>
+                  <Input type="date" value={shippingForm.dispatchDate} onChange={e => setShippingForm({ ...shippingForm, dispatchDate: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Delivery Date</Label>
+                  <Input type="date" value={shippingForm.deliveryDate} onChange={e => setShippingForm({ ...shippingForm, deliveryDate: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Notes</Label>
+                  <Input value={shippingForm.notes} onChange={e => setShippingForm({ ...shippingForm, notes: e.target.value })} placeholder="Order notes" />
                 </div>
               </>
-            )}
-            {order.notes && (
+            ) : (
               <>
-                <Separator className="my-2" />
-                <p className="text-muted-foreground">Notes</p>
-                <p>{order.notes}</p>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Courier</span>
+                  <span>{order.courierName || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tracking</span>
+                  <span>{order.trackingNumber || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Dispatch Date</span>
+                  <span>{order.dispatchDate ? formatDate(order.dispatchDate) : '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Delivery Date</span>
+                  <span>{order.deliveryDate ? formatDate(order.deliveryDate) : '-'}</span>
+                </div>
+                {order.agent && (
+                  <>
+                    <Separator className="my-2" />
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Agent</span>
+                      <span>{order.agent.name}</span>
+                    </div>
+                  </>
+                )}
+                {(order.notes && !editShipping) && (
+                  <>
+                    <Separator className="my-2" />
+                    <p className="text-muted-foreground">Notes</p>
+                    <p>{order.notes}</p>
+                  </>
+                )}
               </>
             )}
           </CardContent>
