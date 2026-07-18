@@ -24,7 +24,7 @@ import {
 import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils'
 import { BrandSwitcher } from '@/components/layout/BrandSwitcher'
 import { useBrandStore } from '@/store/useBrandStore'
-import { ChevronDown, ChevronRight, Search, ShoppingBag, RefreshCw, Eye, Pencil, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Search, ShoppingBag, RefreshCw, Eye, Pencil, Trash2, Phone, Loader2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -33,6 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { toast } from 'sonner'
 
 interface Order {
   _id: string
@@ -48,8 +49,16 @@ interface Order {
   agent?: { _id: string; name: string }
 }
 
+const callStatuses = [
+  { value: 'confirmed', label: 'Order Confirmed', color: 'bg-green-100 text-green-800' },
+  { value: 'cancelled', label: 'Order Cancelled', color: 'bg-red-100 text-red-800' },
+  { value: 'no_response', label: 'No Response', color: 'bg-yellow-100 text-yellow-800' },
+  { value: 'hold', label: 'Order Hold', color: 'bg-orange-100 text-orange-800' },
+] as const
+
 export function OrdersContent() {
   const { selectedBrand } = useBrandStore()
+  const [mounted, setMounted] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
@@ -60,6 +69,11 @@ export function OrdersContent() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [callOrderId, setCallOrderId] = useState<string | null>(null)
+  const [callDialogOpen, setCallDialogOpen] = useState(false)
+  const [calling, setCalling] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
 
   async function handleDelete() {
     if (!deleteId) return
@@ -74,6 +88,48 @@ export function OrdersContent() {
       // silent
     } finally {
       setDeleting(false)
+    }
+  }
+
+  async function handleCall(callStatus: string) {
+    if (!callOrderId) return
+    setCalling(true)
+    const order = orders.find(o => o._id === callOrderId)
+    if (!order) return
+
+    try {
+      const label = callStatuses.find(s => s.value === callStatus)?.label || callStatus
+
+      const res = await fetch(`/api/orders/${callOrderId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          trackingNote: `Call: ${label}`,
+          status: ['confirmed', 'cancelled'].includes(callStatus) ? callStatus : order.status,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to update order')
+
+      if (order.customer?._id) {
+        await fetch(`/api/customers/${order.customer._id}/call`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: order.customer.phone,
+            response: label,
+            orderId: callOrderId,
+          }),
+        }).catch(() => {})
+      }
+
+      toast.success(`Call logged: ${label}`)
+      setCallDialogOpen(false)
+      setCallOrderId(null)
+      fetchOrders()
+    } catch {
+      toast.error('Failed to log call')
+    } finally {
+      setCalling(false)
     }
   }
 
@@ -164,7 +220,7 @@ export function OrdersContent() {
                   <TableHead>Status</TableHead>
                   <TableHead>Courier</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead className="w-[120px]">Actions</TableHead>
+                  <TableHead className="w-[160px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -208,6 +264,15 @@ export function OrdersContent() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-green-600"
+                              onClick={(e) => { e.stopPropagation(); setCallOrderId(order._id); setCallDialogOpen(true) }}
+                              title="Log Call"
+                            >
+                              <Phone className="h-4 w-4" />
+                            </Button>
                             <a href={`/orders/${order._id}`}>
                               <Button variant="ghost" size="icon" className="h-8 w-8">
                                 <Eye className="h-4 w-4" />
@@ -218,7 +283,7 @@ export function OrdersContent() {
                                 <Pencil className="h-4 w-4" />
                               </Button>
                             </a>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { setDeleteId(order._id); setDeleteOpen(true) }}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => { e.stopPropagation(); setDeleteId(order._id); setDeleteOpen(true) }}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -296,6 +361,42 @@ export function OrdersContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {mounted && (
+        <Dialog open={callDialogOpen} onOpenChange={(o) => { if (!o) { setCallDialogOpen(false); setCallOrderId(null) } }}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>Log Call Response</DialogTitle>
+              <DialogDescription>
+                {callOrderId && (() => {
+                  const o = orders.find(ord => ord._id === callOrderId)
+                  return o ? `Calling ${o.customer?.name || 'Unknown'} at ${o.customer?.phone || 'N/A'}` : ''
+                })()}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-3 py-2">
+              {callStatuses.map(s => (
+                <Button
+                  key={s.value}
+                  type="button"
+                  variant="outline"
+                  className={`h-auto py-4 flex flex-col items-center gap-1 ${s.color}`}
+                  onClick={() => handleCall(s.value)}
+                  disabled={calling}
+                >
+                  {calling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
+                  <span className="text-xs font-medium">{s.label}</span>
+                </Button>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => { setCallDialogOpen(false); setCallOrderId(null) }} disabled={calling}>
+                Cancel
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }
