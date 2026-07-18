@@ -4,6 +4,8 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { connectDB } from '@/config/db'
 import Supplier from '@/models/Supplier'
+import '@/models/Brand'
+import '@/models/Product'
 import { createAuditLog } from '@/services/audit.service'
 
 export async function GET(request: Request) {
