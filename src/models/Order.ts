@@ -9,6 +9,13 @@ export interface IOrderItem {
   total: number
 }
 
+export interface ITrackingEvent {
+  status: string
+  note: string
+  timestamp: Date
+  updatedBy?: mongoose.Types.ObjectId
+}
+
 export interface IOrderDocument extends Document {
   orderNumber: string
   brand: mongoose.Types.ObjectId
@@ -25,9 +32,11 @@ export interface IOrderDocument extends Document {
   agent?: mongoose.Types.ObjectId
   courierName?: string
   trackingNumber?: string
+  riderPhone?: string
   dispatchDate?: Date
   deliveryDate?: Date
   notes?: string
+  trackingEvents: ITrackingEvent[]
   shippingAddress: {
     name: string
     phone: string
@@ -47,6 +56,16 @@ const OrderItemSchema = new Schema<IOrderItem>(
     quantity: { type: Number, required: true, min: 1 },
     price: { type: Number, required: true, min: 0 },
     total: { type: Number, required: true, min: 0 },
+  },
+  { _id: false }
+)
+
+const TrackingEventSchema = new Schema<ITrackingEvent>(
+  {
+    status: { type: String, required: true },
+    note: { type: String },
+    timestamp: { type: Date, default: Date.now },
+    updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   },
   { _id: false }
 )
@@ -76,9 +95,11 @@ const OrderSchema = new Schema<IOrderDocument>(
     agent: { type: Schema.Types.ObjectId, ref: 'User' },
     courierName: { type: String },
     trackingNumber: { type: String },
+    riderPhone: { type: String },
     dispatchDate: { type: Date },
     deliveryDate: { type: Date },
     notes: { type: String },
+    trackingEvents: [TrackingEventSchema],
     shippingAddress: {
       name: { type: String, required: true },
       phone: { type: String, required: true },

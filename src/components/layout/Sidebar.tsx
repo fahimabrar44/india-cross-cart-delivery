@@ -24,12 +24,14 @@ import {
   Warehouse,
   UserCog,
   FolderTree,
+  Printer,
 } from 'lucide-react'
 
 const menuItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Brands', href: '/brands', icon: Building2 },
   { label: 'Orders', href: '/orders', icon: ShoppingBag },
+  { label: 'Label Print', href: '/orders/labels', icon: Printer },
   { label: 'Products', href: '/products', icon: Package },
   { label: 'Categories', href: '/categories', icon: FolderTree },
   { label: 'Inventory', href: '/inventory', icon: Boxes },

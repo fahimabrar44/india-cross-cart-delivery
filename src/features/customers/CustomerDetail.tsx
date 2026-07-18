@@ -16,8 +16,28 @@ import {
 } from '@/components/ui/table'
 import { Separator } from '@/components/ui/separator'
 import { toast } from 'sonner'
-import { ArrowLeft, Edit, Trash2 } from 'lucide-react'
+import { format } from 'date-fns'
+import { ArrowLeft, Edit, Trash2, Phone, PhoneCall, Loader2 } from 'lucide-react'
 import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
+
+interface CallLog {
+  _id: string
+  phone: string
+  response: string
+  orderId?: { _id: string; orderNumber: string }
+  timestamp: string
+  userId?: { _id: string; name: string }
+}
 
 interface Customer {
   _id: string
@@ -33,6 +53,7 @@ interface Customer {
   totalPurchases: number
   isBlacklisted: boolean
   notes?: string
+  callLogs: CallLog[]
   createdAt: string
   updatedAt: string
 }
@@ -53,6 +74,9 @@ export function CustomerDetail({ customerId }: { customerId: string }) {
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
+  const [callDialogOpen, setCallDialogOpen] = useState(false)
+  const [callResponse, setCallResponse] = useState('')
+  const [calling, setCalling] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
@@ -83,6 +107,27 @@ export function CustomerDetail({ customerId }: { customerId: string }) {
       router.refresh()
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete')
+    }
+  }
+
+  async function logCall() {
+    if (!callResponse.trim()) { toast.error('Please enter call response'); return }
+    setCalling(true)
+    try {
+      const res = await fetch(`/api/customers/${customerId}/call`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: customer?.phone, response: callResponse }),
+      })
+      if (!res.ok) throw new Error('Failed to log call')
+      toast.success('Call logged')
+      setCallDialogOpen(false)
+      setCallResponse('')
+      fetchData()
+    } catch {
+      toast.error('Failed to log call')
+    } finally {
+      setCalling(false)
     }
   }
 
@@ -122,6 +167,10 @@ export function CustomerDetail({ customerId }: { customerId: string }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button onClick={() => setCallDialogOpen(true)}>
+            <Phone className="h-4 w-4 mr-2" />
+            Call
+          </Button>
           <Button variant="outline" onClick={() => router.push(`/customers/${customerId}/edit`)}>
             <Edit className="h-4 w-4 mr-2" />
             Edit
@@ -159,42 +208,94 @@ export function CustomerDetail({ customerId }: { customerId: string }) {
         </Card>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader><CardTitle>Contact</CardTitle></CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-muted-foreground">Phone</span>
+                <p className="font-medium">{customer.phone}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">WhatsApp</span>
+                <p className="font-medium">{customer.whatsapp || '-'}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Email</span>
+                <p className="font-medium">{customer.email || '-'}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Brand</span>
+                <p className="font-medium">{customer.brand?.name || '-'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Address</CardTitle></CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <div>
+              <span className="text-muted-foreground">Address</span>
+              <p className="font-medium">{customer.address || 'No address on file'}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-muted-foreground">District</span>
+                <p className="font-medium">{customer.district || '-'}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Country</span>
+                <p className="font-medium">{customer.country || '-'}</p>
+              </div>
+            </div>
+            {customer.notes && (
+              <>
+                <Separator className="my-2" />
+                <div>
+                  <span className="text-muted-foreground">Notes</span>
+                  <p className="font-medium">{customer.notes}</p>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
-        <CardHeader><CardTitle>Customer Information</CardTitle></CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <span className="text-muted-foreground">Phone</span>
-              <p className="font-medium">{customer.phone}</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">WhatsApp</span>
-              <p className="font-medium">{customer.whatsapp || '-'}</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Email</span>
-              <p className="font-medium">{customer.email || '-'}</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Brand</span>
-              <p className="font-medium">{customer.brand?.name || '-'}</p>
-            </div>
-          </div>
-          <Separator className="my-2" />
-          <div>
-            <span className="text-muted-foreground">Address</span>
-            <p className="font-medium">{customer.address || 'No address on file'}</p>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <span className="text-muted-foreground">District</span>
-              <p className="font-medium">{customer.district || '-'}</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Country</span>
-              <p className="font-medium">{customer.country || '-'}</p>
-            </div>
-          </div>
+        <CardHeader><CardTitle>Call Log</CardTitle></CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Response</TableHead>
+                <TableHead>Order</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {customer.callLogs && customer.callLogs.length > 0 ? (
+                customer.callLogs.map((log, i) => (
+                  <TableRow key={log._id || i}>
+                    <TableCell className="text-sm">{format(new Date(log.timestamp), 'MMM d, h:mm a')}</TableCell>
+                    <TableCell>{log.phone}</TableCell>
+                    <TableCell>{log.response}</TableCell>
+                    <TableCell>
+                      {log.orderId ? (log.orderId as { orderNumber: string }).orderNumber : '-'}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
+                    No call logs
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
@@ -245,6 +346,34 @@ export function CustomerDetail({ customerId }: { customerId: string }) {
       <div className="text-right text-sm text-muted-foreground">
         Total purchase amount across all orders: <span className="font-bold text-foreground">{formatCurrency(totalPurchaseAmount)}</span>
       </div>
+
+      <Dialog open={callDialogOpen} onOpenChange={setCallDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Call {customer.name}</DialogTitle>
+            <DialogDescription>
+              Calling {customer.phone}. Enter the response after the call.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label>Call Response</Label>
+              <Input
+                value={callResponse}
+                onChange={e => setCallResponse(e.target.value)}
+                placeholder="e.g., Not interested, Will order later, Complaint..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCallDialogOpen(false)} disabled={calling}>Cancel</Button>
+            <Button onClick={logCall} disabled={calling}>
+              {calling ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PhoneCall className="h-4 w-4 mr-2" />}
+              Log Call
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

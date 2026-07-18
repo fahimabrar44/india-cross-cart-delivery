@@ -1,5 +1,13 @@
 import mongoose, { Schema, Document } from 'mongoose'
 
+export interface ICallLog {
+  phone: string
+  response: string
+  orderId?: mongoose.Types.ObjectId
+  timestamp: Date
+  userId?: mongoose.Types.ObjectId
+}
+
 export interface ICustomerDocument extends Document {
   name: string
   phone: string
@@ -13,6 +21,7 @@ export interface ICustomerDocument extends Document {
   totalOrders: number
   isBlacklisted: boolean
   notes?: string
+  callLogs: ICallLog[]
   createdAt: Date
   updatedAt: Date
 }
@@ -31,6 +40,13 @@ const CustomerSchema = new Schema<ICustomerDocument>(
     totalOrders: { type: Number, default: 0, min: 0 },
     isBlacklisted: { type: Boolean, default: false },
     notes: { type: String },
+    callLogs: [{
+      phone: { type: String, required: true },
+      response: { type: String, required: true },
+      orderId: { type: Schema.Types.ObjectId, ref: 'Order' },
+      timestamp: { type: Date, default: Date.now },
+      userId: { type: Schema.Types.ObjectId, ref: 'User' },
+    }],
   },
   { timestamps: true }
 )

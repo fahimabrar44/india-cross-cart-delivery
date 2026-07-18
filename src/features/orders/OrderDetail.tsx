@@ -26,7 +26,8 @@ import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Printer, Loader2, Pencil, Check, X } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { ArrowLeft, Printer, Loader2, Pencil, Check, X, Phone } from 'lucide-react'
 import { formatCurrency, formatDate, formatDateTime, getStatusColor } from '@/lib/utils'
 
 interface OrderItem {
@@ -46,6 +47,13 @@ interface ShippingAddress {
   country: string
 }
 
+interface TrackingEvent {
+  status: string
+  note: string
+  timestamp: string
+  updatedBy?: { _id: string; name: string }
+}
+
 interface Order {
   _id: string
   orderNumber: string
@@ -63,9 +71,11 @@ interface Order {
   status: string
   courierName?: string
   trackingNumber?: string
+  riderPhone?: string
   dispatchDate?: string
   deliveryDate?: string
   notes?: string
+  trackingEvents: TrackingEvent[]
   shippingAddress: ShippingAddress
   createdAt: string
   updatedAt: string
@@ -79,8 +89,9 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [editShipping, setEditShipping] = useState(false)
+  const [trackingNote, setTrackingNote] = useState('')
   const [shippingForm, setShippingForm] = useState({
-    courierName: '', trackingNumber: '', dispatchDate: '', deliveryDate: '', notes: '',
+    courierName: '', trackingNumber: '', riderPhone: '', dispatchDate: '', deliveryDate: '', notes: '',
   })
 
   const fetchOrder = useCallback(async () => {
@@ -100,14 +111,17 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   async function updateStatus(status: string) {
     setUpdating(true)
     try {
+      const body: Record<string, unknown> = { status }
+      if (trackingNote.trim()) body.trackingNote = trackingNote.trim()
       const res = await fetch(`/api/orders/${orderId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(body),
       })
       if (!res.ok) { const err = await res.json(); throw new Error(err.error) }
       const json = await res.json()
       setOrder(json.data)
+      setTrackingNote('')
       toast.success(`Status updated to ${status}`)
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Failed to update status')
@@ -120,6 +134,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
     setShippingForm({
       courierName: order?.courierName || '',
       trackingNumber: order?.trackingNumber || '',
+      riderPhone: order?.riderPhone || '',
       dispatchDate: order?.dispatchDate ? format(new Date(order.dispatchDate), 'yyyy-MM-dd') : '',
       deliveryDate: order?.deliveryDate ? format(new Date(order.deliveryDate), 'yyyy-MM-dd') : '',
       notes: order?.notes || '',
@@ -134,6 +149,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
       const body: Record<string, unknown> = {}
       if (shippingForm.courierName !== (order.courierName || '')) body.courierName = shippingForm.courierName
       if (shippingForm.trackingNumber !== (order.trackingNumber || '')) body.trackingNumber = shippingForm.trackingNumber
+      if (shippingForm.riderPhone !== (order.riderPhone || '')) body.riderPhone = shippingForm.riderPhone
       if (shippingForm.dispatchDate !== (order.dispatchDate ? format(new Date(order.dispatchDate), 'yyyy-MM-dd') : '')) body.dispatchDate = shippingForm.dispatchDate || null
       if (shippingForm.deliveryDate !== (order.deliveryDate ? format(new Date(order.deliveryDate), 'yyyy-MM-dd') : '')) body.deliveryDate = shippingForm.deliveryDate || null
       if (shippingForm.notes !== (order.notes || '')) body.notes = shippingForm.notes
@@ -182,6 +198,10 @@ export function OrderDetail({ orderId }: { orderId: string }) {
     )
   }
 
+  const sortedEvents = [...(order.trackingEvents || [])].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  )
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -202,7 +222,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Status</CardTitle></CardHeader>
           <CardContent>
@@ -226,6 +246,12 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                 {updating && <Loader2 className="h-4 w-4 animate-spin" />}
               </div>
             </div>
+            <Input
+              className="mt-2 text-xs h-7"
+              placeholder="Add note for this status change..."
+              value={trackingNote}
+              onChange={e => setTrackingNote(e.target.value)}
+            />
           </CardContent>
         </Card>
 
@@ -253,6 +279,14 @@ export function OrderDetail({ orderId }: { orderId: string }) {
             </p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Rider</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-lg font-mono">{order.riderPhone || '-'}</p>
+            <p className="text-xs text-muted-foreground">Rider phone number</p>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -262,7 +296,12 @@ export function OrderDetail({ orderId }: { orderId: string }) {
             {order.customer ? (
               <>
                 <p className="font-medium">{order.customer.name}</p>
-                <p className="text-muted-foreground">{order.customer.phone}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-muted-foreground">{order.customer.phone}</p>
+                  <a href={`tel:${order.customer.phone}`} className="text-primary hover:underline inline-flex items-center gap-1">
+                    <Phone className="h-3 w-3" /> Call
+                  </a>
+                </div>
                 {order.customer.email && <p className="text-muted-foreground">{order.customer.email}</p>}
               </>
             ) : (
@@ -271,7 +310,12 @@ export function OrderDetail({ orderId }: { orderId: string }) {
             <Separator className="my-2" />
             <p className="font-medium">Shipping Address</p>
             <p className="text-muted-foreground">{order.shippingAddress.name}</p>
-            <p className="text-muted-foreground">{order.shippingAddress.phone}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-muted-foreground">{order.shippingAddress.phone}</p>
+              <a href={`tel:${order.shippingAddress.phone}`} className="text-primary hover:underline inline-flex items-center gap-1">
+                <Phone className="h-3 w-3" /> Call
+              </a>
+            </div>
             <p className="text-muted-foreground">{order.shippingAddress.address}</p>
             <p className="text-muted-foreground">{order.shippingAddress.district}, {order.shippingAddress.country}</p>
           </CardContent>
@@ -308,6 +352,10 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                   <Input value={shippingForm.trackingNumber} onChange={e => setShippingForm({ ...shippingForm, trackingNumber: e.target.value })} placeholder="Tracking number" />
                 </div>
                 <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Rider Phone</Label>
+                  <Input value={shippingForm.riderPhone} onChange={e => setShippingForm({ ...shippingForm, riderPhone: e.target.value })} placeholder="Rider phone number" />
+                </div>
+                <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Dispatch Date</Label>
                   <Input type="date" value={shippingForm.dispatchDate} onChange={e => setShippingForm({ ...shippingForm, dispatchDate: e.target.value })} />
                 </div>
@@ -329,6 +377,10 @@ export function OrderDetail({ orderId }: { orderId: string }) {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Tracking</span>
                   <span>{order.trackingNumber || '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Rider Phone</span>
+                  <span className="font-mono">{order.riderPhone || '-'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Dispatch Date</span>
@@ -415,33 +467,70 @@ export function OrderDetail({ orderId }: { orderId: string }) {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle>Timeline</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Tracking Timeline</CardTitle></CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {statuses.filter(s => s !== 'cancelled' && s !== 'returned').map((status, i) => {
-              const statusIndex = statuses.indexOf(order.status)
-              const currentIndex = statuses.indexOf(status)
-              const isReached = currentIndex <= statusIndex && !['cancelled', 'returned'].includes(order.status)
-              const isCancelledOrReturned = ['cancelled', 'returned'].includes(order.status)
+          {sortedEvents.length > 0 ? (
+            <div className="space-y-4">
+              {sortedEvents.map((event, i) => (
+                <div key={i} className="flex gap-3">
+                  <div className="flex flex-col items-center">
+                    <div className={`h-3 w-3 rounded-full mt-1.5 ${
+                      event.status === 'cancelled' || event.status === 'returned'
+                        ? 'bg-red-500'
+                        : event.status === 'delivered'
+                        ? 'bg-green-500'
+                        : 'bg-blue-500'
+                    }`} />
+                    {i < sortedEvents.length - 1 && <div className="w-px flex-1 bg-border mt-1" />}
+                  </div>
+                  <div className="flex-1 pb-4">
+                    <div className="flex items-center gap-2">
+                      <Badge className={getStatusColor(event.status)}>
+                        {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {format(new Date(event.timestamp), 'MMM d, h:mm a')}
+                      </span>
+                    </div>
+                    {event.note && (
+                      <p className="text-sm text-muted-foreground mt-1">{event.note}</p>
+                    )}
+                    {event.updatedBy && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        by {event.updatedBy.name}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {statuses.filter(s => s !== 'cancelled' && s !== 'returned').map((status, i) => {
+                const statusIndex = statuses.indexOf(order.status)
+                const currentIndex = statuses.indexOf(status)
+                const isReached = currentIndex <= statusIndex && !['cancelled', 'returned'].includes(order.status)
+                const isCancelledOrReturned = ['cancelled', 'returned'].includes(order.status)
 
-              return (
-                <div key={status} className="flex items-center gap-3">
-                  <div className={`h-3 w-3 rounded-full ${isCancelledOrReturned ? 'bg-red-400' : isReached ? 'bg-green-500' : 'bg-gray-200'}`} />
-                  <span className={`text-sm ${isReached ? 'font-medium' : 'text-muted-foreground'}`}>
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                return (
+                  <div key={status} className="flex items-center gap-3">
+                    <div className={`h-3 w-3 rounded-full ${isCancelledOrReturned ? 'bg-red-400' : isReached ? 'bg-green-500' : 'bg-gray-200'}`} />
+                    <span className={`text-sm ${isReached ? 'font-medium' : 'text-muted-foreground'}`}>
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                    </span>
+                  </div>
+                )
+              })}
+              {['cancelled', 'returned'].includes(order.status) && (
+                <div className="flex items-center gap-3 mt-2 pt-2 border-t">
+                  <div className="h-3 w-3 rounded-full bg-red-400" />
+                  <span className="text-sm font-medium text-red-600">
+                    {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                   </span>
                 </div>
-              )
-            })}
-            {['cancelled', 'returned'].includes(order.status) && (
-              <div className="flex items-center gap-3 mt-2 pt-2 border-t">
-                <div className="h-3 w-3 rounded-full bg-red-400" />
-                <span className="text-sm font-medium text-red-600">
-                  {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                </span>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
