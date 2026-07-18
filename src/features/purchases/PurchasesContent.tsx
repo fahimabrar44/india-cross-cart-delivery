@@ -16,7 +16,15 @@ import {
 import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils'
 import { BrandSwitcher } from '@/components/layout/BrandSwitcher'
 import { useBrandStore } from '@/store/useBrandStore'
-import { ChevronDown, ChevronRight, ShoppingCart, RefreshCw, Plus } from 'lucide-react'
+import { ChevronDown, ChevronRight, ShoppingCart, RefreshCw, Plus, Eye, Pencil, Trash2 } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 interface Purchase {
   _id: string
@@ -39,6 +47,25 @@ export function PurchasesContent() {
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDelete() {
+    if (!deleteId) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/purchases/${deleteId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete')
+      setDeleteOpen(false)
+      setDeleteId(null)
+      fetchPurchases()
+    } catch {
+      // silent
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const fetchPurchases = useCallback(async () => {
     setLoading(true)
@@ -99,12 +126,13 @@ export function PurchasesContent() {
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead>Payment Status</TableHead>
                   <TableHead>Date</TableHead>
+                  <TableHead className="w-[120px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {purchases.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
                       <ShoppingCart className="h-10 w-10 mx-auto mb-2 opacity-50" />
                       <p>No purchases found</p>
                     </TableCell>
@@ -138,10 +166,27 @@ export function PurchasesContent() {
                         <TableCell className="text-sm text-muted-foreground">
                           {formatDate(purchase.purchaseDate || purchase.createdAt)}
                         </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <a href={`/purchases/${purchase._id}`}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </a>
+                            <a href={`/purchases/${purchase._id}/edit`}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </a>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { setDeleteId(purchase._id); setDeleteOpen(true) }}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                       {expandedId === purchase._id && (
                         <TableRow>
-                          <TableCell colSpan={7} className="bg-muted/30 p-4">
+                          <TableCell colSpan={8} className="bg-muted/30 p-4">
                             <div className="space-y-4 text-sm">
                               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                 <div>
@@ -210,6 +255,21 @@ export function PurchasesContent() {
           </Button>
         </div>
       )}
+
+      <Dialog open={deleteOpen} onOpenChange={(o) => { if (!o) { setDeleteOpen(false); setDeleteId(null) } }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Delete Purchase</DialogTitle>
+            <DialogDescription>Are you sure? This cannot be undone.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => { setDeleteOpen(false); setDeleteId(null) }}>Cancel</Button>
+            <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

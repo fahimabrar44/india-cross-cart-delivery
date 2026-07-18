@@ -15,7 +15,15 @@ import {
 } from '@/components/ui/table'
 import { BrandSwitcher } from '@/components/layout/BrandSwitcher'
 import { useBrandStore } from '@/store/useBrandStore'
-import { ChevronDown, ChevronRight, Warehouse, Plus, RefreshCw, Building2, Phone, User } from 'lucide-react'
+import { ChevronDown, ChevronRight, Warehouse, Plus, RefreshCw, Building2, Phone, User, Eye, Pencil, Trash2 } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 interface WarehouseItem {
   _id: string
@@ -36,6 +44,25 @@ export function WarehousesContent() {
   const [warehouses, setWarehouses] = useState<WarehouseItem[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleDelete() {
+    if (!deleteId) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/warehouses/${deleteId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete')
+      setDeleteOpen(false)
+      setDeleteId(null)
+      setRefreshKey((k) => k + 1)
+    } catch {
+      // silent
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   useEffect(() => {
     let mounted = true
@@ -84,12 +111,13 @@ export function WarehousesContent() {
                   <TableHead>Manager</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="w-[120px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {warehouses.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                       <Warehouse className="h-10 w-10 mx-auto mb-2 opacity-50" />
                       <p>No warehouses found</p>
                     </TableCell>
@@ -125,16 +153,33 @@ export function WarehousesContent() {
                         <TableCell>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                             w.isActive
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                              ?                           'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                               : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                           }`}>
                             {w.isActive ? 'Active' : 'Inactive'}
                           </span>
                         </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <a href={`/warehouses/${w._id}`}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </a>
+                            <a href={`/warehouses/${w._id}/edit`}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </a>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { setDeleteId(w._id); setDeleteOpen(true) }}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                       {expandedId === w._id && (
                         <TableRow>
-                          <TableCell colSpan={5} className="bg-muted/30 p-4">
+                          <TableCell colSpan={6} className="bg-muted/30 p-4">
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                               <div>
                                 <p className="text-muted-foreground mb-1">Address</p>
@@ -172,6 +217,21 @@ export function WarehousesContent() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={deleteOpen} onOpenChange={(o) => { if (!o) { setDeleteOpen(false); setDeleteId(null) } }}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Delete Warehouse</DialogTitle>
+            <DialogDescription>Are you sure? This cannot be undone.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => { setDeleteOpen(false); setDeleteId(null) }}>Cancel</Button>
+            <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? 'Deleting...' : 'Delete'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

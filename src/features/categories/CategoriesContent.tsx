@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/select'
 import { BrandSwitcher } from '@/components/layout/BrandSwitcher'
 import { useBrandStore } from '@/store/useBrandStore'
-import { Plus, RefreshCw, Pencil, Trash2, FolderTree } from 'lucide-react'
+import { Plus, RefreshCw, Pencil, Trash2, FolderTree, Eye } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Category {
@@ -293,6 +293,11 @@ export function CategoriesContent() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
+                          <a href={`/categories/${cat._id}`}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </a>
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(cat)}>
                             <Pencil className="h-4 w-4" />
                           </Button>
