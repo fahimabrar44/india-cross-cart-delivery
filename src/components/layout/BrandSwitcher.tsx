@@ -5,6 +5,7 @@ import { useBrandStore } from '@/store/useBrandStore'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -50,16 +51,18 @@ export function BrandSwitcher() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-[180px]">
-        <DropdownMenuItem onClick={() => setSelectedBrand(null)}>
-          <Check className={`mr-2 h-4 w-4 ${!selectedBrand ? 'opacity-100' : 'opacity-0'}`} />
-          All Brands
-        </DropdownMenuItem>
-        {brands.map((brand) => (
-          <DropdownMenuItem key={brand._id} onClick={() => setSelectedBrand(brand._id)}>
-            <Check className={`mr-2 h-4 w-4 ${selectedBrand === brand._id ? 'opacity-100' : 'opacity-0'}`} />
-            {brand.name}
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={() => setSelectedBrand(null)}>
+            <Check className={`mr-2 h-4 w-4 ${!selectedBrand ? 'opacity-100' : 'opacity-0'}`} />
+            All Brands
           </DropdownMenuItem>
-        ))}
+          {brands.map((brand) => (
+            <DropdownMenuItem key={brand._id} onClick={() => setSelectedBrand(brand._id)}>
+              <Check className={`mr-2 h-4 w-4 ${selectedBrand === brand._id ? 'opacity-100' : 'opacity-0'}`} />
+              {brand.name}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )
