@@ -5,9 +5,19 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
-import { ArrowLeft, Printer, Search, Loader2 } from 'lucide-react'
+import { ArrowLeft, Printer, Search, Loader2, Check, Plus, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { formatDate, getStatusColor } from '@/lib/utils'
 import QRCode from 'qrcode'
 
 interface OrderForLabel {
@@ -20,26 +30,65 @@ interface OrderForLabel {
   items: Array<{ name: string; quantity: number }>
 }
 
+interface SearchResult {
+  _id: string
+  orderNumber: string
+  status: string
+  courierName?: string
+  trackingNumber?: string
+  shippingAddress: { name: string; phone: string; address: string; district: string }
+  createdAt: string
+}
+
 export function LabelPrint() {
   const router = useRouter()
   const [orders, setOrders] = useState<OrderForLabel[]>([])
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([])
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searching, setSearching] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [orderIdsInput, setOrderIdsInput] = useState('')
   const printRef = useRef<HTMLDivElement>(null)
 
-  async function fetchOrders(ids: string[]) {
+  async function handleSearch() {
+    if (!searchQuery.trim()) { toast.error('Enter an order number'); return }
+    setSearching(true)
+    try {
+      const res = await fetch(`/api/orders?search=${encodeURIComponent(searchQuery.trim())}&limit=50`)
+      if (!res.ok) throw new Error('Search failed')
+      const json = await res.json()
+      setSearchResults(json.data || [])
+      if (json.data?.length === 0) toast.error('No orders found')
+    } catch {
+      toast.error('Failed to search orders')
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  async function loadSelected() {
+    if (selectedIds.size === 0) { toast.error('Select at least one order'); return }
     setLoading(true)
     try {
       const fetched: OrderForLabel[] = []
-      for (const id of ids) {
-        const res = await fetch(`/api/orders/${id.trim()}`)
+      for (const id of selectedIds) {
+        const res = await fetch(`/api/orders/${id}`)
         if (res.ok) {
           const json = await res.json()
           fetched.push(json.data)
         }
       }
       setOrders(fetched)
-      if (fetched.length === 0) toast.error('No valid orders found')
+      if (fetched.length === 0) toast.error('Failed to load orders')
     } catch {
       toast.error('Failed to load orders')
     } finally {
@@ -47,10 +96,11 @@ export function LabelPrint() {
     }
   }
 
-  function handleLoad() {
-    const ids = orderIdsInput.split(/[\s,]+/).map(s => s.trim()).filter(Boolean)
-    if (ids.length === 0) { toast.error('Enter at least one order ID'); return }
-    fetchOrders(ids)
+  function clearAll() {
+    setOrders([])
+    setSearchResults([])
+    setSelectedIds(new Set())
+    setSearchQuery('')
   }
 
   function handlePrint() {
@@ -71,27 +121,82 @@ export function LabelPrint() {
           </Button>
           <h1 className="text-2xl font-bold">Label Print</h1>
         </div>
-        <Button onClick={handlePrint} disabled={orders.length === 0}>
-          <Printer className="h-4 w-4 mr-2" /> Print Labels ({orders.length})
-        </Button>
+        <div className="flex items-center gap-2">
+          {orders.length > 0 && (
+            <Button variant="outline" onClick={clearAll}>
+              <X className="h-4 w-4 mr-2" /> Clear
+            </Button>
+          )}
+          <Button onClick={handlePrint} disabled={orders.length === 0}>
+            <Printer className="h-4 w-4 mr-2" /> Print ({orders.length} labels)
+          </Button>
+        </div>
       </div>
 
+      {/* Search */}
       <div className="flex items-end gap-2 no-print">
         <div className="flex-1">
-          <Label>Order IDs (space or comma separated)</Label>
+          <Label>Search by Order Number</Label>
           <Input
-            value={orderIdsInput}
-            onChange={e => setOrderIdsInput(e.target.value)}
-            placeholder="e.g., orderId1 orderId2 orderId3 orderId4"
-            onKeyDown={e => { if (e.key === 'Enter') handleLoad() }}
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="e.g., ORD-001 or part of order number"
+            onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
           />
         </div>
-        <Button onClick={handleLoad} disabled={loading}>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-          Load
+        <Button onClick={handleSearch} disabled={searching}>
+          {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+          Search
         </Button>
       </div>
 
+      {/* Search results */}
+      {searchResults.length > 0 && orders.length === 0 && (
+        <div className="no-print border rounded-lg overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2 bg-muted/50 border-b">
+            <span className="text-sm font-medium">{searchResults.length} orders found</span>
+            <Button size="sm" onClick={loadSelected} disabled={selectedIds.size === 0}>
+              <Plus className="h-4 w-4 mr-1" /> Load Selected ({selectedIds.size})
+            </Button>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10"></TableHead>
+                <TableHead>Order #</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Courier</TableHead>
+                <TableHead>Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {searchResults.map(order => (
+                <TableRow
+                  key={order._id}
+                  className={`cursor-pointer ${selectedIds.has(order._id) ? 'bg-primary/5' : ''}`}
+                  onClick={() => toggleSelect(order._id)}
+                >
+                  <TableCell>
+                    <div className={`h-5 w-5 rounded border flex items-center justify-center ${
+                      selectedIds.has(order._id) ? 'bg-primary border-primary text-primary-foreground' : 'border-input'
+                    }`}>
+                      {selectedIds.has(order._id) && <Check className="h-3 w-3" />}
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium">{order.orderNumber}</TableCell>
+                  <TableCell>{order.shippingAddress.name}</TableCell>
+                  <TableCell><Badge className={getStatusColor(order.status)}>{order.status}</Badge></TableCell>
+                  <TableCell>{order.courierName || '-'}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{formatDate(order.createdAt)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Loading */}
       {loading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -99,10 +204,7 @@ export function LabelPrint() {
       ) : (
         <div ref={printRef} className="space-y-8">
           {pages.map((pageOrders, pageIdx) => (
-            <div
-              key={pageIdx}
-              className="label-page"
-            >
+            <div key={pageIdx} className="label-page">
               {Array.from({ length: 4 }).map((_, slotIdx) => {
                 const order = pageOrders[slotIdx]
                 if (!order) return <div key={slotIdx} className="label-slot border border-dashed border-gray-300 rounded bg-gray-50/50" />
@@ -112,7 +214,7 @@ export function LabelPrint() {
           ))}
           {orders.length === 0 && !loading && (
             <div className="text-center py-20 text-muted-foreground">
-              Enter order IDs above to load labels
+              Search by order number, then select and load orders to print labels
             </div>
           )}
         </div>
