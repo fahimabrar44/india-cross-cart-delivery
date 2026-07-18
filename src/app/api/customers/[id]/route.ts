@@ -11,10 +11,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     await connectDB()
     const { id } = await params
-    const data = await Customer.findById(id).populate('brand', 'name')
+    const data = await Customer.findById(id)
+      .populate('brand', 'name')
+      .populate('callLogs.orderId', 'orderNumber')
+      .populate('callLogs.userId', 'name')
     if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     return NextResponse.json({ data })
   } catch (error) {
+    console.error('Customer fetch error:', error)
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
