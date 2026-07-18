@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useEffect, useState } from "react"
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover"
 
 import { cn } from "@/lib/utils"
@@ -26,9 +25,6 @@ function PopoverContent({
     PopoverPrimitive.Positioner.Props,
     "align" | "alignOffset" | "side" | "sideOffset"
   >) {
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
-  if (!mounted) return null
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Positioner

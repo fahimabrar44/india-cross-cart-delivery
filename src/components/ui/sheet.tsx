@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useEffect, useState } from "react"
 import { Dialog as SheetPrimitive } from "@base-ui/react/dialog"
 
 import { cn } from "@/lib/utils"
@@ -21,9 +20,6 @@ function SheetClose({ ...props }: SheetPrimitive.Close.Props) {
 }
 
 function SheetPortal({ ...props }: SheetPrimitive.Portal.Props) {
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
-  if (!mounted) return null
   return <SheetPrimitive.Portal data-slot="sheet-portal" {...props} />
 }
 
