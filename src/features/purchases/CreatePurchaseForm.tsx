@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Select,
   SelectContent,
@@ -40,12 +41,14 @@ interface PurchaseItem {
   total: number
 }
 
-export function CreatePurchaseForm() {
+export function CreatePurchaseForm({ purchaseId }: { purchaseId?: string }) {
   const router = useRouter()
   const { selectedBrand } = useBrandStore()
+  const isEditing = !!purchaseId
   const [brands, setBrands] = useState<Brand[]>([])
   const [brand, setBrand] = useState(selectedBrand || '')
   const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(isEditing)
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [supplier, setSupplier] = useState('')
@@ -77,6 +80,30 @@ export function CreatePurchaseForm() {
         .then(json => setProducts(json.data || []))
     }
   }, [brand])
+
+  useEffect(() => {
+    if (!purchaseId) return
+    fetch(`/api/purchases/${purchaseId}`)
+      .then(r => r.json())
+      .then(json => {
+        const p = json.data
+        if (!p) return
+        setBrand(p.brand?._id || '')
+        setSupplier(p.supplier?._id || '')
+        setItems(p.items.map((i: { product: { _id: string; name: string }; quantity: number; price: number; total: number }) => ({
+          product: i.product._id,
+          name: i.product.name,
+          sku: '',
+          quantity: i.quantity,
+          cost: i.price,
+          total: i.total,
+        })))
+        setDiscount(p.discount || 0)
+        setPaymentStatus(p.paymentStatus || 'pending')
+        setNotes(p.notes || '')
+      })
+      .finally(() => setFetching(false))
+  }, [purchaseId])
 
   const subtotal = items.reduce((sum, i) => sum + i.total, 0)
   const grandTotal = Math.max(0, subtotal - discount)
@@ -137,18 +164,21 @@ export function CreatePurchaseForm() {
         notes,
       }
 
-      const res = await fetch('/api/purchases', {
-        method: 'POST',
+      const url = isEditing ? `/api/purchases/${purchaseId}` : '/api/purchases'
+      const method = isEditing ? 'PUT' : 'POST'
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
 
       if (!res.ok) { const err = await res.json(); throw new Error(err.error) }
-      toast.success('Purchase created')
+      toast.success(isEditing ? 'Purchase updated' : 'Purchase created')
       router.push('/purchases')
       router.refresh()
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create purchase')
+      toast.error(err instanceof Error ? err.message : `Failed to ${isEditing ? 'update' : 'create'} purchase`)
     } finally {
       setLoading(false)
     }
@@ -157,13 +187,24 @@ export function CreatePurchaseForm() {
   const currentBrand = brands.find(b => b._id === brand)
   const symbol = currentBrand?.currencySymbol || '৳'
 
+  if (fetching) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-40" />
+        <Skeleton className="h-64" />
+        <Skeleton className="h-40" />
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-2xl font-bold">New Purchase</h1>
+        <h1 className="text-2xl font-bold">{isEditing ? 'Edit Purchase' : 'New Purchase'}</h1>
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -314,7 +355,7 @@ export function CreatePurchaseForm() {
           <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
           <Button type="submit" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Purchase
+            {isEditing ? 'Update Purchase' : 'Create Purchase'}
           </Button>
         </div>
       </form>

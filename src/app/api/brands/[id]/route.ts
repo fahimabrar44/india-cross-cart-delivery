@@ -66,3 +66,34 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
+
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await auth()
+    if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    if (session.user.role !== 'super_admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    const { id } = await params
+    await connectDB()
+
+    const brand = await Brand.findByIdAndDelete(id).lean()
+    if (!brand) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    await createAuditLog({
+      brand: id,
+      user: session.user.id,
+      action: 'delete_brand',
+      entity: 'Brand',
+      entityId: id,
+      after: { name: brand.name },
+    })
+
+    return NextResponse.json({ data: { id }, message: 'Brand deleted successfully' })
+  } catch (error) {
+    console.error('Brand delete error:', error)
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
+  }
+}

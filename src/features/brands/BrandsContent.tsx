@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -58,6 +59,7 @@ interface Brand {
 }
 
 export function BrandsContent() {
+  const router = useRouter()
   const [brands, setBrands] = useState<Brand[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -315,8 +317,8 @@ export function BrandsContent() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuGroup>
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>Edit</DropdownMenuItem>
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/brands/${brand._id}`)}>View Details</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push('/settings')}>Edit</DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-destructive">
                             Deactivate

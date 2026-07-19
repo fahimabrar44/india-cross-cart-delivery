@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -21,12 +22,13 @@ import { useBrandStore } from '@/store/useBrandStore'
 interface Brand { _id: string; name: string }
 interface Product { _id: string; name: string; sku: string }
 
-export function SupplierForm() {
+export function SupplierForm({ supplierId }: { supplierId?: string } = {}) {
   const router = useRouter()
   const { selectedBrand } = useBrandStore()
   const [brands, setBrands] = useState<Brand[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(!!supplierId)
 
   const [form, setForm] = useState({
     name: '',
@@ -37,6 +39,28 @@ export function SupplierForm() {
     brand: selectedBrand || '',
     products: [] as string[],
   })
+
+  useEffect(() => {
+    if (!supplierId) return
+    fetch(`/api/suppliers/${supplierId}`)
+      .then(r => r.json())
+      .then(json => {
+        const d = json.data
+        if (d) {
+          setForm({
+            name: d.contactPerson || '',
+            phone: d.phone || '',
+            company: d.companyName || '',
+            email: d.email || '',
+            address: d.address || '',
+            brand: d.brand?._id || '',
+            products: d.products?.map((p: { _id: string }) => p._id) || [],
+          })
+        }
+      })
+      .catch(() => toast.error('Failed to load supplier'))
+      .finally(() => setFetching(false))
+  }, [supplierId])
 
   useEffect(() => {
     fetch('/api/brands')
@@ -79,14 +103,16 @@ export function SupplierForm() {
 
     setLoading(true)
     try {
-      const res = await fetch('/api/suppliers', {
-        method: 'POST',
+      const url = supplierId ? `/api/suppliers/${supplierId}` : '/api/suppliers'
+      const method = supplierId ? 'PUT' : 'POST'
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
 
       if (!res.ok) { const err = await res.json(); throw new Error(err.error) }
-      toast.success('Supplier created')
+      toast.success(supplierId ? 'Supplier updated' : 'Supplier created')
       router.push('/suppliers')
       router.refresh()
     } catch (err: unknown) {
@@ -96,13 +122,34 @@ export function SupplierForm() {
     }
   }
 
+  if (fetching) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-2xl font-bold">Edit Supplier</h1>
+        </div>
+        <Card>
+          <CardHeader><Skeleton className="h-7 w-48" /></CardHeader>
+          <CardContent className="space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-2xl font-bold">Add Supplier</h1>
+        <h1 className="text-2xl font-bold">{supplierId ? 'Edit Supplier' : 'Add Supplier'}</h1>
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -181,7 +228,7 @@ export function SupplierForm() {
           <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
           <Button type="submit" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Supplier
+            {supplierId ? 'Update Supplier' : 'Create Supplier'}
           </Button>
         </div>
       </form>

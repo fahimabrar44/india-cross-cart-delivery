@@ -20,11 +20,16 @@ import { useBrandStore } from '@/store/useBrandStore'
 
 interface Brand { _id: string; name: string }
 
-export function WarehouseForm() {
+interface WarehouseFormProps {
+  warehouseId?: string
+}
+
+export function WarehouseForm({ warehouseId }: WarehouseFormProps = {}) {
   const router = useRouter()
   const { selectedBrand } = useBrandStore()
   const [brands, setBrands] = useState<Brand[]>([])
   const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(!!warehouseId)
 
   const [form, setForm] = useState({
     name: '',
@@ -35,6 +40,8 @@ export function WarehouseForm() {
     address: '',
     location: '',
   })
+
+  const isEditing = !!warehouseId
 
   useEffect(() => {
     fetch('/api/brands')
@@ -47,6 +54,27 @@ export function WarehouseForm() {
       })
   }, [])
 
+  useEffect(() => {
+    if (!warehouseId) return
+    fetch(`/api/warehouses/${warehouseId}`)
+      .then(r => r.json())
+      .then(json => {
+        if (json.data) {
+          setForm({
+            name: json.data.name || '',
+            brand: json.data.brand?._id || '',
+            manager: json.data.manager || '',
+            phone: json.data.phone || '',
+            email: json.data.email || '',
+            address: json.data.address || '',
+            location: json.data.location || '',
+          })
+        }
+      })
+      .catch(() => toast.error('Failed to load warehouse'))
+      .finally(() => setFetching(false))
+  }, [warehouseId])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.name || !form.brand) {
@@ -56,14 +84,16 @@ export function WarehouseForm() {
 
     setLoading(true)
     try {
-      const res = await fetch('/api/warehouses', {
-        method: 'POST',
+      const url = isEditing ? `/api/warehouses/${warehouseId}` : '/api/warehouses'
+      const method = isEditing ? 'PUT' : 'POST'
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
 
       if (!res.ok) { const err = await res.json(); throw new Error(err.error) }
-      toast.success('Warehouse created')
+      toast.success(isEditing ? 'Warehouse updated' : 'Warehouse created')
       router.push('/warehouses')
       router.refresh()
     } catch (err: unknown) {
@@ -73,13 +103,31 @@ export function WarehouseForm() {
     }
   }
 
+  if (fetching) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => router.back()}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-2xl font-bold">{isEditing ? 'Edit Warehouse' : 'Add Warehouse'}</h1>
+        </div>
+        <Card>
+          <CardContent className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-2xl font-bold">Add Warehouse</h1>
+        <h1 className="text-2xl font-bold">{isEditing ? 'Edit Warehouse' : 'Add Warehouse'}</h1>
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -160,7 +208,7 @@ export function WarehouseForm() {
           <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
           <Button type="submit" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Create Warehouse
+            {isEditing ? 'Update Warehouse' : 'Create Warehouse'}
           </Button>
         </div>
       </form>
