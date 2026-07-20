@@ -110,6 +110,12 @@ export function OrdersContent() {
       })
       if (!res.ok) throw new Error('Failed to update order')
 
+      await fetch(`/api/orders/${callOrderId}/call`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: order.customer?.phone || 'N/A', response: label }),
+      }).catch(() => {})
+
       if (order.customer?._id) {
         await fetch(`/api/customers/${order.customer._id}/call`, {
           method: 'POST',

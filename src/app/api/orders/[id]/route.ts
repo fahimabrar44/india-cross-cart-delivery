@@ -17,6 +17,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       .populate('agent', 'name email')
       .populate('brand', 'name currency currencySymbol')
       .populate('trackingEvents.updatedBy', 'name')
+      .populate('callLogs.userId', 'name')
     if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     return NextResponse.json({ data })
   } catch (error) {
@@ -58,6 +59,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       .populate('agent', 'name')
       .populate('brand', 'name')
       .populate('trackingEvents.updatedBy', 'name')
+      .populate('callLogs.userId', 'name')
 
     const before: Record<string, unknown> = {}
     const after: Record<string, unknown> = {}

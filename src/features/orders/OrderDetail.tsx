@@ -27,7 +27,15 @@ import { format } from 'date-fns'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowLeft, Printer, Loader2, Pencil, Check, X, Phone } from 'lucide-react'
+import { ArrowLeft, Printer, Loader2, Pencil, Check, X, Phone, PhoneCall } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog'
 import { formatCurrency, formatDate, formatDateTime, getStatusColor } from '@/lib/utils'
 
 interface OrderItem {
@@ -54,6 +62,14 @@ interface TrackingEvent {
   updatedBy?: { _id: string; name: string }
 }
 
+interface CallLogEntry {
+  _id: string
+  phone: string
+  response: string
+  timestamp: string
+  userId?: { _id: string; name: string }
+}
+
 interface Order {
   _id: string
   orderNumber: string
@@ -76,6 +92,7 @@ interface Order {
   deliveryDate?: string
   notes?: string
   trackingEvents: TrackingEvent[]
+  callLogs: CallLogEntry[]
   shippingAddress: ShippingAddress
   createdAt: string
   updatedAt: string
@@ -93,6 +110,38 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   const [shippingForm, setShippingForm] = useState({
     courierName: '', trackingNumber: '', riderPhone: '', dispatchDate: '', deliveryDate: '', notes: '',
   })
+  const [mounted, setMounted] = useState(false)
+  const [callDialogOpen, setCallDialogOpen] = useState(false)
+  const [calling, setCalling] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
+
+  async function logOrderCall(response: string) {
+    if (!order) return
+    setCalling(true)
+    try {
+      const res = await fetch(`/api/orders/${orderId}/call`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: order.shippingAddress.phone, response }),
+      })
+      if (!res.ok) throw new Error('Failed to log call')
+      toast.success(`Call logged: ${response}`)
+      setCallDialogOpen(false)
+      fetchOrder()
+    } catch {
+      toast.error('Failed to log call')
+    } finally {
+      setCalling(false)
+    }
+  }
+
+  const callStatuses = [
+    { value: 'confirmed', label: 'Order Confirmed', color: 'bg-green-100 text-green-800' },
+    { value: 'cancelled', label: 'Order Cancelled', color: 'bg-red-100 text-red-800' },
+    { value: 'no_response', label: 'No Response', color: 'bg-yellow-100 text-yellow-800' },
+    { value: 'hold', label: 'Order Hold', color: 'bg-orange-100 text-orange-800' },
+  ] as const
 
   const fetchOrder = useCallback(async () => {
     try {
@@ -533,6 +582,80 @@ export function OrderDetail({ orderId }: { orderId: string }) {
           )}
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Call Log</CardTitle>
+          <Button type="button" size="sm" onClick={() => setCallDialogOpen(true)}>
+            <Phone className="h-4 w-4 mr-1" /> Log Call
+          </Button>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Response</TableHead>
+                <TableHead>Logged By</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {order.callLogs && order.callLogs.length > 0 ? (
+                order.callLogs.map((log, i) => (
+                  <TableRow key={log._id || i}>
+                    <TableCell className="text-sm">{format(new Date(log.timestamp), 'MMM d, h:mm a')}</TableCell>
+                    <TableCell>{log.phone}</TableCell>
+                    <TableCell>{log.response}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {log.userId && typeof log.userId === 'object' ? (log.userId as { name: string }).name : '-'}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
+                    No call logs
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {mounted && (
+        <Dialog open={callDialogOpen} onOpenChange={(o) => { if (!o) setCallDialogOpen(false) }}>
+          <DialogContent className="sm:max-w-[400px]">
+            <DialogHeader>
+              <DialogTitle>Log Call Response</DialogTitle>
+              <DialogDescription>
+                Calling {order.shippingAddress.name} at {order.shippingAddress.phone}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-3 py-2">
+              {callStatuses.map(s => (
+                <Button
+                  key={s.value}
+                  type="button"
+                  variant="outline"
+                  className={`h-auto py-4 flex flex-col items-center gap-1 ${s.color}`}
+                  onClick={() => logOrderCall(s.label)}
+                  disabled={calling}
+                >
+                  {calling ? <Loader2 className="h-4 w-4 animate-spin" /> : <Phone className="h-4 w-4" />}
+                  <span className="text-xs font-medium">{s.label}</span>
+                </Button>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCallDialogOpen(false)} disabled={calling}>
+                Cancel
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

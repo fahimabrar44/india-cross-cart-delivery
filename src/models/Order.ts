@@ -16,6 +16,13 @@ export interface ITrackingEvent {
   updatedBy?: mongoose.Types.ObjectId
 }
 
+export interface ICallLogEntry {
+  phone: string
+  response: string
+  timestamp: Date
+  userId?: mongoose.Types.ObjectId
+}
+
 export interface IOrderDocument extends Document {
   orderNumber: string
   brand: mongoose.Types.ObjectId
@@ -37,6 +44,7 @@ export interface IOrderDocument extends Document {
   deliveryDate?: Date
   notes?: string
   trackingEvents: ITrackingEvent[]
+  callLogs: ICallLogEntry[]
   shippingAddress: {
     name: string
     phone: string
@@ -100,6 +108,12 @@ const OrderSchema = new Schema<IOrderDocument>(
     deliveryDate: { type: Date },
     notes: { type: String },
     trackingEvents: [TrackingEventSchema],
+    callLogs: [{
+      phone: { type: String, required: true },
+      response: { type: String, required: true },
+      timestamp: { type: Date, default: Date.now },
+      userId: { type: Schema.Types.ObjectId, ref: 'User' },
+    }],
     shippingAddress: {
       name: { type: String, required: true },
       phone: { type: String, required: true },
